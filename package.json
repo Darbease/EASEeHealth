@@ -1,0 +1,30 @@
+{
+  "name": "proofpa",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Privacy-preserving prior authorization and claim payout protocol",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "workflows/cre/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.11.0",
+    "@types/express": "^4.17.21"
+  },
+  "dependencies": {
+    "viem": "^2.21.0",
+    "zod": "^3.22.0",
+    "pino": "^8.19.0",
+    "express": "^4.18.0"
+  }
+}

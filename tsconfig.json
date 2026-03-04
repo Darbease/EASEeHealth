@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "references": [
+    { "path": "packages/schemas" },
+    { "path": "packages/eip712-types" },
+    { "path": "packages/observability" },
+    { "path": "packages/sdk-client" }
+  ],
+  "exclude": ["node_modules", "dist", "contracts"]
+}
