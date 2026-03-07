@@ -4,18 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-ProofPA is in the **architecture-locked, pre-implementation phase** (locked March 4, 2026). No production code exists yet — only documentation and directory scaffolding. Implementation follows the backlog in `TECH_ARCHITECTURE_SPEC_ProofPA.md` § 14. Before implementing anything, read `docs/MVP_DECISIONS.md`. Any deviation from locked decisions requires updating that file with date and rationale.
+ProofPA **MVP implementation is complete** (architecture locked March 4, 2026). All contracts, services, CRE workflows, and the demo dashboard are implemented and passing. See `docs/MVP_DECISIONS.md` for frozen decisions — any deviation requires updating that file with date and rationale.
 
 ## Build Commands
 
-No build scripts exist yet. When scaffolding them, the expected stack is:
-- **Contracts**: Hardhat or Foundry (`npx hardhat compile` / `forge build`)
-- **Services/apps**: TypeScript with Node.js (`tsc`, `ts-node`)
-- **Tests**: Hardhat/Foundry for contracts; integration tests under `tests/`
+- **Contracts**: `cd contracts && forge build` (Foundry/Solidity 0.8.24)
+- **Contract tests**: `cd contracts && forge test -vvv` (52 tests including fuzz + invariant)
+- **Services**: `npm install` (npm workspaces monorepo)
+- **CRE workflows**: `make install-cre` (bun per-workflow)
+- **Dashboard**: `cd apps/demo-dashboard && npm install && npm run dev`
+- **Full E2E demo**: `make demo-full` (anvil → deploy → services → demo → CRE simulate)
+- **All targets**: `make help`
 
 ## Architecture Overview
 
-The system connects three portals → six backend services → Chainlink CRE workflows → four Solidity contracts on Base Sepolia.
+The system connects three portals → six backend services → five Chainlink CRE workflows → five Solidity contracts on Base Sepolia.
 
 **Critical data flow (WF-001 happy path):**
 Provider Portal → `POST /v1/prior-auth/submit` → CRE WF-001 → [ConsentRegistry check] → [Policy Service] → [Proof Service stub] → `ClaimDecisionRegistry.submitClaim()` + `setProofResult()` → `ClaimEscrow.schedulePayout()` + `releasePayout()` → callback to provider
@@ -35,10 +38,11 @@ APPROVED → CHALLENGED → APPROVED | DENIED
 
 ## Smart Contracts (`contracts/src/`)
 
-Four contracts, all using OpenZeppelin role-based access. Roles: `WORKFLOW_ROLE` (CRE signer), `POLICY_ADMIN_ROLE`, `CHALLENGE_ROLE`, `TREASURY_ROLE`.
+Five contracts, all using OpenZeppelin role-based access. Roles: `WORKFLOW_ROLE` (CRE signer), `POLICY_ADMIN_ROLE`, `CHALLENGE_ROLE`, `TREASURY_ROLE`.
 
 | Contract | Responsibility |
 |---|---|
+| `MockUSDC` | ERC-20 mock USDC token (6 decimals) for settlement |
 | `ConsentRegistry` | Consent lifecycle (ACTIVE/REVOKED/EXPIRED), `upsertConsent`, `revokeConsent`, `isConsentActive` |
 | `PolicyRegistry` | Policy version hashes, `setPolicyVersion`, `isPolicyActive` |
 | `ClaimDecisionRegistry` | State machine, `submitClaim`, `setProofResult`, `challengeClaim`, `resolveChallenge`, `markPaid` |
@@ -59,12 +63,13 @@ See `TECH_ARCHITECTURE_SPEC_ProofPA.md` §§ 5.2–5.5 for full method signature
 
 All signed payloads use **EIP-712 typed data**. All requests carry anti-replay fields (`nonce`, `issued_at`, `expires_at`) and a `correlation_id` that must be propagated end-to-end.
 
-## CRE Workflows (`workflows/cre/`)
+## CRE Workflows (`ProofPACRE/`)
 
-- **WF-001** `PriorAuthDecision` — HTTP trigger; orchestrates the full approval-to-payout path
-- **WF-002** `ConsentRevocation` — HTTP trigger; revokes consent and flags pending claims
-- **WF-003** `ChallengeResolution` — HTTP trigger; blocks payout until ops resolves
-- **WF-004** `ReconciliationMonitor` — scheduled every 15 min; detects stuck `PROOF_PENDING` or state mismatches
+- **WF-001** `PriorAuthDecision` — Cron trigger; orchestrates the full approval-to-payout path
+- **WF-002** `ConsentRevocation` — Cron trigger; revokes consent and flags pending claims
+- **WF-003** `ChallengeResolution` — Cron trigger; blocks payout until ops resolves
+- **WF-004** `ReconciliationMonitor` — Cron trigger; detects stuck `PROOF_PENDING` or state mismatches
+- **WF-005** `EncryptedCredentialAudit` — Cron trigger; AES-GCM encryption showcase (4 encrypted HTTP calls + 1 on-chain read)
 
 Transient failures retry with exponential backoff (max 3). Proof timeouts set state to `PROOF_PENDING` and hand off to WF-004.
 
@@ -100,10 +105,12 @@ SLO targets: p95 decision latency ≤ 120s, payout success ≥ 99%, zero unresol
 
 ## Deploy Order
 
-1. Deploy 4 contracts; grant roles to CRE signer and ops addresses
+1. Deploy 5 contracts; grant roles to CRE signer and ops addresses
 2. Seed policy versions and verifier key hashes in `PolicyRegistry`
-3. Launch services (Provider Adapter, Policy, Proof)
-4. Activate CRE workflows and WF-004 schedule
+3. Launch services (ports 3001-3006)
+4. Activate CRE workflows (WF-001 through WF-005)
+
+Or run `make demo-full` to automate the full sequence.
 
 Network: **Base Sepolia**. Settlement token: ERC-20 mock USDC (6 decimals).
 

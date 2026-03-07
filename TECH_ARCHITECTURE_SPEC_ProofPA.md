@@ -394,7 +394,7 @@ Proof result is valid only if `P1..P6 == true`.
 3. Build Provider Adapter and callback bus.
 4. Implement policy service + rule parser.
 5. Implement prover/verifier stub with reason bitmap.
-6. Build CRE workflows `WF-001..WF-004`.
+6. Build CRE workflows `WF-001..WF-005`.
 7. Add ops console (minimal) for challenge actions.
 8. Add observability dashboards and alert rules.
 

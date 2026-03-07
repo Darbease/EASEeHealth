@@ -29,6 +29,7 @@ This document freezes the MVP architecture choices so implementation can start w
 
 ## 4. Contract Pattern
 - Contracts in MVP:
+  - `MockUSDC` (ERC-20 settlement token)
   - `ConsentRegistry`
   - `PolicyRegistry`
   - `ClaimDecisionRegistry`
@@ -47,6 +48,7 @@ This document freezes the MVP architecture choices so implementation can start w
 - `WF-002`: Consent revocation
 - `WF-003`: Challenge resolution
 - `WF-004`: Reconciliation monitor
+- `WF-005`: Encrypted credential audit (AES-GCM showcase, added 2026-03-05)
 
 ## 7. API Contract Standards
 - Signed payload format: EIP-712 typed data where applicable
@@ -68,7 +70,7 @@ This document freezes the MVP architecture choices so implementation can start w
 - Fiat payment rails
 
 ## 10. AES-GCM Output Encryption (added 2026-03-05)
-- **Decision**: Enable `encryptOutput: true` on all ConfidentialHTTPClient calls across WF-001, WF-002, WF-003
+- **Decision**: Enable `encryptOutput: true` on all ConfidentialHTTPClient calls across WF-001, WF-002, WF-003, WF-005
 - **Rationale**: CRE DON nodes relay HTTP responses through the network in cleartext by default. Enabling AES-GCM output encryption (via `san_marino_aes_gcm_encryption_key` secret already provisioned in secrets.yaml) ensures response payloads containing sensitive claim/policy data are encrypted end-to-end. This is a zero-cost privacy improvement — the SDK auto-decrypts on the workflow side.
 - **Scope**: 6 existing ConfidentialHTTPClient call sites + new WF-005 (4 additional encrypted calls)
 - **New workflow**: `WF-005-EncryptedCredentialAudit` — dedicated showcase workflow demonstrating 4 encrypted HTTP calls + 1 on-chain consent read for a full credential audit cycle
