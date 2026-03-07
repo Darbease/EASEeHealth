@@ -1,0 +1,17 @@
+{
+  "name": "@proofpa/sdk-client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.21.0",
+    "@proofpa/schemas": "*",
+    "@proofpa/eip712-types": "*"
+  }
+}

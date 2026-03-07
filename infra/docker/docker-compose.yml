@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    command: ["anvil", "--host", "0.0.0.0"]
+    ports:
+      - "8545:8545"
+
+  policy-service:
+    build: { context: ../.. , dockerfile: infra/docker/Dockerfile.service }
+    command: ["tsx", "services/policy-service/src/index.ts"]
+    environment:
+      PORT: "3001"
+    ports:
+      - "3001:3001"
+
+  credential-service:
+    build: { context: ../.. , dockerfile: infra/docker/Dockerfile.service }
+    command: ["tsx", "services/credential-service/src/index.ts"]
+    environment:
+      PORT: "3002"
+    ports:
+      - "3002:3002"
+
+  proof-service-stub:
+    build: { context: ../.. , dockerfile: infra/docker/Dockerfile.service }
+    command: ["tsx", "services/proof-service-stub/src/index.ts"]
+    environment:
+      PORT: "3003"
+    ports:
+      - "3003:3003"
+
+  consent-service:
+    build: { context: ../.. , dockerfile: infra/docker/Dockerfile.service }
+    command: ["tsx", "services/consent-service/src/index.ts"]
+    environment:
+      PORT: "3004"
+    ports:
+      - "3004:3004"
+
+  provider-adapter-api:
+    build: { context: ../.. , dockerfile: infra/docker/Dockerfile.service }
+    command: ["tsx", "services/provider-adapter-api/src/index.ts"]
+    environment:
+      PORT: "3005"
+    ports:
+      - "3005:3005"
+
+  decision-callback-service:
+    build: { context: ../.. , dockerfile: infra/docker/Dockerfile.service }
+    command: ["tsx", "services/decision-callback-service/src/index.ts"]
+    environment:
+      PORT: "3006"
+    ports:
+      - "3006:3006"

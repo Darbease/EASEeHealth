@@ -67,5 +67,11 @@ This document freezes the MVP architecture choices so implementation can start w
 - Live payer core system integration
 - Fiat payment rails
 
-## 10. Change Policy
+## 10. AES-GCM Output Encryption (added 2026-03-05)
+- **Decision**: Enable `encryptOutput: true` on all ConfidentialHTTPClient calls across WF-001, WF-002, WF-003
+- **Rationale**: CRE DON nodes relay HTTP responses through the network in cleartext by default. Enabling AES-GCM output encryption (via `san_marino_aes_gcm_encryption_key` secret already provisioned in secrets.yaml) ensures response payloads containing sensitive claim/policy data are encrypted end-to-end. This is a zero-cost privacy improvement — the SDK auto-decrypts on the workflow side.
+- **Scope**: 6 existing ConfidentialHTTPClient call sites + new WF-005 (4 additional encrypted calls)
+- **New workflow**: `WF-005-EncryptedCredentialAudit` — dedicated showcase workflow demonstrating 4 encrypted HTTP calls + 1 on-chain consent read for a full credential audit cycle
+
+## 11. Change Policy
 Any change to these decisions requires an explicit update to this file with date and rationale.

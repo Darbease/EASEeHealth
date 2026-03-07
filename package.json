@@ -5,8 +5,7 @@
   "description": "Privacy-preserving prior authorization and claim payout protocol",
   "workspaces": [
     "packages/*",
-    "services/*",
-    "workflows/cre/*"
+    "services/*"
   ],
   "scripts": {
     "build": "tsc --build",

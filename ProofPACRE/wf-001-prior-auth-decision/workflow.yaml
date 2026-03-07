@@ -1,0 +1,24 @@
+# ==========================================================================
+# WF-001: Prior Auth Decision
+# ==========================================================================
+# Cron-triggered workflow that polls for pending prior-auth requests,
+# calls policy-service and proof-service via confidential HTTP,
+# then posts the decision to the callback service.
+
+# ==========================================================================
+staging-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF001-PriorAuthDecision-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: "../secrets.yaml"
+
+# ==========================================================================
+production-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF001-PriorAuthDecision-production"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: "../secrets.yaml"

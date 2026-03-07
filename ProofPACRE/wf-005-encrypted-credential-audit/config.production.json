@@ -1,0 +1,11 @@
+{
+  "schedule": "*/30 * * * * *",
+  "credentialServiceUrl": "https://proofpa-credential.example.com",
+  "policyServiceUrl": "https://proofpa-policy.example.com",
+  "proofServiceUrl": "https://proofpa-proof.example.com",
+  "callbackServiceUrl": "https://proofpa-callback.example.com",
+  "chainSelector": "10344971235874465080",
+  "consentRegistryAddress": "0x0000000000000000000000000000000000000000",
+  "creSignerAddress": "0x0000000000000000000000000000000000000000",
+  "owner": ""
+}

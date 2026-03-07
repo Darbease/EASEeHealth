@@ -1,0 +1,25 @@
+# ==========================================================================
+# WF-005: Encrypted Credential Audit
+# ==========================================================================
+# Cron-triggered workflow that showcases AES-GCM encryption. Makes 4
+# encrypted HTTP calls (credential-service, policy-service, proof-service,
+# callback-service) chained with 1 on-chain consent verification to
+# perform a full credential audit cycle.
+
+# ==========================================================================
+staging-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF005-EncryptedCredentialAudit-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: "../secrets.yaml"
+
+# ==========================================================================
+production-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF005-EncryptedCredentialAudit-production"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: "../secrets.yaml"

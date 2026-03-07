@@ -1,0 +1,8 @@
+{
+  "schedule": "0 */15 * * * *",
+  "chainSelector": "10344971235874465080",
+  "claimDecisionRegistryAddress": "0x0000000000000000000000000000000000000000",
+  "claimEscrowAddress": "0x0000000000000000000000000000000000000000",
+  "creSignerAddress": "0x0000000000000000000000000000000000000000",
+  "sloTargetSeconds": 900
+}

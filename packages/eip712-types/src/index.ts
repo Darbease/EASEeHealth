@@ -1,0 +1,8 @@
+export { PROOFPA_DOMAIN } from "./domain.js"
+export { PriorAuthRequestTypes } from "./prior-auth-request.js"
+export { ConsentGrantTypes } from "./consent-grant.js"
+export { ConsentRevokeTypes } from "./consent-revoke.js"
+export { ProofResultTypes } from "./proof-result.js"
+export { DecisionReportTypes } from "./decision-report.js"
+export { signTypedData } from "./sign.js"
+export { verifyEip712Signature } from "./verify.js"

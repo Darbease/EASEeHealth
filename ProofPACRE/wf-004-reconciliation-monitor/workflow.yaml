@@ -1,0 +1,23 @@
+# ==========================================================================
+# WF-004: Reconciliation Monitor
+# ==========================================================================
+# Scheduled every 15 minutes. Detects stuck PROOF_PENDING claims
+# and state mismatches between ClaimDecisionRegistry and ClaimEscrow.
+
+# ==========================================================================
+staging-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF004-ReconciliationMonitor-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: "../secrets.yaml"
+
+# ==========================================================================
+production-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF004-ReconciliationMonitor-production"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: "../secrets.yaml"

@@ -33,3 +33,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# CRE build artifacts
+ProofPACRE/*/.cre_build_tmp*
+ProofPACRE/*/bun.lock

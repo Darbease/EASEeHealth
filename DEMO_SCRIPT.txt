@@ -1,0 +1,394 @@
+PROOFPA — VIDEO DEMO SCRIPT
+============================
+
+Target length: 8–12 minutes
+Format: Screen recording with voiceover, terminal + browser split
+
+────────────────────────────────────────────────────────────────────
+SECTION 1: INTRO (0:00 – 1:00)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: README hero section or architecture diagram]
+
+VOICEOVER:
+
+"ProofPA is a privacy-preserving prior authorization system built on
+Chainlink CRE — the Compute Runtime Environment. It connects
+healthcare providers, payers, and patients through a pipeline where
+no protected health information ever touches the blockchain or
+oracle network logs.
+
+The system has three layers:
+  - Six backend Express services that hold clinical data
+  - Five CRE workflows that orchestrate decisions inside a
+    decentralized oracle network
+  - Five Solidity contracts on-chain that enforce state transitions
+    and settle payouts in mock USDC
+
+Every sensitive HTTP call is AES-GCM encrypted end-to-end through
+the DON. The blockchain only sees hashes, state transitions, and
+payout amounts — never a patient name, diagnosis, or MRN.
+
+Let me show you how it works."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 2: ARCHITECTURE WALKTHROUGH (1:00 – 2:30)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Scroll through the system wiremap in the README]
+
+VOICEOVER:
+
+"Here's the full system wiremap. On the left, six Express services
+running on ports 3001 through 3006 — policy, credentials, proof
+evaluation, consent management, the provider adapter API, and
+decision callbacks.
+
+In the center, the Chainlink CRE DON runs five workflows.
+WF-001 is the main prior auth flow — it makes ten calls: one
+regular HTTP with DON consensus, two confidential encrypted calls,
+two on-chain reads, and five on-chain writes. That's policy lookup,
+consent verification, proof evaluation, claim submission, proof
+recording, payout scheduling, payout release, marking the claim
+PAID, and provider notification — all in a single workflow execution.
+
+WF-002 monitors consent revocations — and writes revocations
+on-chain if the ConsentRegistry is out of sync. WF-003 handles
+the full challenge lifecycle: challengeClaim, resolveChallenge,
+and cancelPayout if denied.
+WF-004 is pure on-chain — it reads claim and escrow state to detect
+stuck claims and settlement mismatches, no HTTP at all. WF-005
+showcases AES-GCM encryption with four encrypted calls in sequence.
+
+At the bottom, five Solidity contracts on Base Sepolia — or local
+Anvil for this demo. MockUSDC for the settlement token,
+ConsentRegistry, PolicyRegistry, ClaimDecisionRegistry for the
+state machine, and ClaimEscrow for payouts.
+
+Let's start everything up."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 3: STARTUP (2:30 – 3:30)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Terminal — run startup commands]
+
+VOICEOVER:
+
+"I'll start with 'make anvil' to launch a local Ethereum chain.
+Anvil gives us deterministic addresses so every demo run produces
+the same contract addresses."
+
+  $ make anvil
+  (wait for "Listening on 127.0.0.1:8545")
+
+[SECOND TERMINAL]
+
+"Now deploy all five contracts. The deploy script mints a million
+mock USDC, funds the escrow pool, seeds a demo policy, grants the
+CRE signer the WORKFLOW_ROLE, and gives the ops address the
+CHALLENGE_ROLE."
+
+  $ make deploy-local
+  $ make deploy-verify
+
+"Escrow has funds, CRE signer has WORKFLOW_ROLE — we're good.
+Now start the six backend services."
+
+  $ make services
+
+"All six services are up on ports 3001 through 3006. Let's run the
+demo scenarios."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 4: SCENARIO A — HAPPY PATH (3:30 – 5:30)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Terminal — run demo or workflow simulation]
+
+VOICEOVER:
+
+"Scenario A is the happy path. A provider submits a prior auth
+request for a knee MRI. The system needs to verify four things:
+is the provider credentialed, is the patient's consent active,
+does the policy cover this procedure, and is the amount within
+the plan cap?
+
+I'll run WF-001 — the prior auth decision workflow."
+
+  $ make simulate-wf001
+
+[SCREEN: Highlight each log line as it appears]
+
+"Step 1: The workflow fetches the policy from the policy service.
+It gets back the predicates — covered procedures, amount caps,
+attestation window. Notice the log says 'predicates loaded' — it
+doesn't echo what those predicates are. No clinical data in the
+CRE logs.
+
+Step 2: On-chain consent check. It calls ConsentRegistry dot
+isConsentActive and gets back true — consent is active.
+
+Step 3: On-chain policy check. PolicyRegistry confirms the policy
+hash is active.
+
+Step 4: This is the confidential call. The workflow sends the
+claim details plus the policy predicates it got from step 1 to
+the proof service — encrypted with AES-GCM. The proof service
+evaluates six predicate checks: credential valid, procedure
+covered, amount within cap, consent active, not a duplicate,
+attestation is fresh. All six pass.
+
+Step 5: Submit the claim on-chain. ClaimDecisionRegistry transitions
+the state from NONE to SUBMITTED. This is a DON-signed write —
+the report is signed by the oracle network and submitted as a
+transaction.
+
+Step 6: Record the proof result. State goes from SUBMITTED to
+APPROVED, reason bitmap is zero — no denial flags.
+
+Step 7: Schedule the payout. ClaimEscrow stages 85,000 units of
+mock USDC to the treasury address. The payout status goes from
+NONE to SCHEDULED.
+
+Step 8: Release the payout. ClaimEscrow executes the actual
+ERC-20 transfer from escrow to treasury. Status goes from
+SCHEDULED to RELEASED.
+
+Step 9: Mark the claim PAID — terminal state. No further
+transitions allowed. The claim lifecycle is complete on-chain.
+
+Step 10: Notify the provider via encrypted callback. Decision:
+APPROVED.
+
+The entire flow — policy lookup, two on-chain reads, encrypted
+proof evaluation, five on-chain writes, and provider notification
+— executed in a single CRE workflow run."
+
+[OPTIONAL: Run broadcast mode to show on-chain writes]
+
+  $ make broadcast-wf001
+
+"With the broadcast flag, those EVM writes actually land on Anvil.
+We can verify with cast."
+
+  $ cast call 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+      "getDecision(bytes32)" 0x0101010101010101010101010101010101010101010101010101010101010101 \
+      --rpc-url http://127.0.0.1:8545
+
+"State is 6 — that's PAID. The claim went all the way through:
+submitted, approved, payout scheduled, released, and marked paid.
+The full lifecycle completed on-chain."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 5: SCENARIO B — REVOKED CONSENT (5:30 – 7:00)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Terminal]
+
+VOICEOVER:
+
+"Scenario B: what happens when a patient revokes consent? This
+triggers two things — the proof service should deny the claim
+with bit 3 set in the reason bitmap, and WF-002 should detect
+the revocation and flag affected claims.
+
+First, the demo runner revokes consent and re-evaluates."
+
+  $ make demo
+  (show Scenario B output)
+
+"The proof service returns FAIL with bitmap 8 — that's bit 3,
+consent invalid. Five of six checks passed, but consent is the
+dealbreaker. The claim is DENIED.
+
+Now let's run WF-002 — the consent revocation monitor."
+
+  $ make simulate-wf002
+
+"WF-002 polls the consent service for recent revocations, gets
+back the data, then cross-checks on-chain. It calls
+ConsentRegistry.isConsentActive — if the chain says ACTIVE but the
+service says REVOKED, the workflow writes revokeConsent on-chain
+to synchronize the state. If already revoked, it skips the write.
+
+Then it notifies the callback service to flag pending claims.
+Notice again — the logs show consent hash prefix and counts, not
+patient names."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 6: SCENARIO C — CHALLENGE (7:00 – 8:30)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Terminal]
+
+VOICEOVER:
+
+"Scenario C: an approved claim gets challenged. An ops reviewer
+flags the claim — maybe the amount seems high for the procedure.
+The payout is immediately blocked.
+
+Let's run WF-003 to see the challenge resolution monitor."
+
+  $ make simulate-wf003
+
+"The workflow polls for pending challenges. It finds one —
+one challenge for the claim, flagged by the clinical review team.
+It reads the on-chain state from ClaimDecisionRegistry to verify
+the claim is APPROVED.
+
+Now the on-chain writes. Step 3: challengeClaim — the claim
+transitions from APPROVED to CHALLENGED. The payout is blocked.
+
+Step 4: resolveChallenge — the workflow resolves the challenge.
+If approved, the claim goes back to APPROVED and the payout
+unblocks. If denied, step 5 fires: cancelPayout on ClaimEscrow,
+which returns the staged funds to the pool.
+
+Finally it notifies the provider via encrypted callback.
+
+This is the full state machine in action — three on-chain writes
+in a single workflow: challenge, resolve, and conditionally cancel
+the payout."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 7: WF-004 RECONCILIATION (8:30 – 9:30)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Terminal]
+
+VOICEOVER:
+
+"WF-004 is the watchdog. It runs on a schedule — every 30 seconds
+in staging, every 15 minutes in production — and does pure on-chain
+reads. No HTTP calls, no services needed.
+
+It checks two things: is any claim stuck in PROOF_PENDING beyond the
+SLO threshold? And do the ClaimDecisionRegistry and ClaimEscrow
+agree — if a claim is PAID, is the payout actually RELEASED?"
+
+  $ make simulate-wf004
+
+"It reads the claim state — APPROVED, last updated at this
+timestamp. Then it reads the escrow — payout is SCHEDULED, amount
+is the expected value. No mismatches, no stuck claims. All clear.
+
+If something were wrong — say a claim had been in PROOF_PENDING for
+20 minutes — it would flag an SLO violation right here."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 8: WF-005 ENCRYPTION SHOWCASE (9:30 – 10:30)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Terminal]
+
+VOICEOVER:
+
+"WF-005 is the encryption showcase. It makes four confidential HTTP
+calls — every single one with encryptOutput true — chained with one
+on-chain consent check. This is the full credential audit pipeline.
+
+Step 1: verify provider credentials — encrypted.
+Step 2: check consent on-chain — this is an EVM read, not HTTP.
+Step 3: fetch the policy — encrypted. The predicates from this
+response get piped directly into step 4.
+Step 4: evaluate medical necessity — encrypted. Uses the predicates
+from step 3, not hardcoded values.
+Step 5: post audit results — encrypted.
+
+Four out of four HTTP calls encrypted with AES-GCM."
+
+  $ make simulate-wf005
+
+"Audit result: PASS. All steps completed, all responses encrypted
+end-to-end through the DON."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 9: PRIVACY & DESIGN (10:30 – 11:30)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Scroll through CRE logs from any workflow run]
+
+VOICEOVER:
+
+"Let me highlight something you may have noticed. Look at these CRE
+logs. You see claim hashes, consent hashes, procedure codes like
+PROC_KNEE_MRI, predicate pass-fail counts, on-chain state names.
+
+What you don't see: no patient names, no MRNs, no diagnoses, no
+dollar amounts, no clinical narrative. The CRE workflows parse
+service responses for business logic — they use the policy
+predicates to evaluate the proof, they check consent status — but
+they never echo that data back to the DON logs.
+
+The services hold the clinical data. The CRE DON orchestrates the
+decisions. The blockchain enforces the state machine. Each layer
+sees only what it needs.
+
+This is the core privacy guarantee: the on-chain record is a
+verifiable audit trail of decisions and settlements, without
+revealing who the patient is or what their diagnosis was."
+
+
+────────────────────────────────────────────────────────────────────
+SECTION 10: CLOSING (11:30 – 12:00)
+────────────────────────────────────────────────────────────────────
+
+[SCREEN: Architecture diagram or README]
+
+VOICEOVER:
+
+"To recap — ProofPA uses all three Chainlink CRE capabilities in a
+single healthcare project: HTTPClient with DON consensus,
+ConfidentialHTTPClient with AES-GCM encryption, and EVMClient for
+on-chain reads and DON-signed writes.
+
+Five workflows, five contracts, six services, three demo scenarios,
+zero PHI on-chain or in oracle logs.
+
+The repo is open — contracts compile, tests pass, the demo runs
+end-to-end on a local Anvil chain. Check the README for setup
+instructions.
+
+Thanks for watching."
+
+────────────────────────────────────────────────────────────────────
+END
+────────────────────────────────────────────────────────────────────
+
+
+PRODUCTION NOTES
+================
+
+Terminal setup:
+  - Font size 16+ for readability on recording
+  - Dark terminal theme with high contrast
+  - Split pane: left for commands, right for log output
+
+Commands to run before recording:
+  1. make anvil          (terminal 1, leave running)
+  2. make deploy-local   (terminal 2)
+  3. make services       (terminal 3, leave running)
+  4. Clear terminal 2 for the demo commands
+
+Key moments to emphasize:
+  - Step 4 of WF-001: "predicates loaded" vs. never showing what they are
+  - WF-001 steps 7-9: schedule → release → markPaid — full payout lifecycle
+  - The bitmap: 0 = approved, 8 = consent denied (bit 3)
+  - WF-002: revokeConsent on-chain write when state is out of sync
+  - WF-003: three on-chain writes — challenge, resolve, cancel payout
+  - WF-004 has zero HTTP calls — pure on-chain health check
+  - WF-005 four-for-four encrypted calls
+  - Every log line: hashes and codes, never names
+
+If time is tight, cut sections 7–8 (WF-004/005) and go straight
+from Scenario C to Privacy & Design. Core story is WF-001 + the
+three scenarios.

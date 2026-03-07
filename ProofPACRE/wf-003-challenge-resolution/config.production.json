@@ -1,0 +1,9 @@
+{
+  "schedule": "*/30 * * * * *",
+  "callbackServiceUrl": "https://proofpa-callback.example.com",
+  "chainSelector": "10344971235874465080",
+  "claimDecisionRegistryAddress": "0x0000000000000000000000000000000000000000",
+  "claimEscrowAddress": "0x0000000000000000000000000000000000000000",
+  "creSignerAddress": "0x0000000000000000000000000000000000000000",
+  "owner": ""
+}

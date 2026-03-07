@@ -1,0 +1,7 @@
+FROM node:20-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/ packages/
+COPY services/ services/
+RUN npm ci --ignore-scripts
+CMD ["echo", "Override CMD with docker-compose command"]
