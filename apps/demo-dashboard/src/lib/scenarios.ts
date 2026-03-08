@@ -1,4 +1,5 @@
-export type CRECapability = "HTTP" | "EVM_READ" | "EVM_WRITE" | "ENCRYPTED";
+export type CRECapability = "HTTP" | "EVM_READ" | "EVM_WRITE" | "ENCRYPTED" | "DECODE";
+export type TriggerType = "cron" | "log" | "http";
 
 export interface ExpectedStep {
   step: number;
@@ -14,18 +15,27 @@ export interface SetupStep {
   id: string;
   title: string;
   description: string;
-  request: { url: string; method: string; body?: unknown };
+  /** "http" = fetch request, "cast" = on-chain via /api/chain */
+  type: "http" | "cast";
+  request?: { url: string; method: string; body?: unknown };
+  cast?: { action: string; claimId: string; policyHash: string };
 }
 
 export interface CREScenario {
   id: string;
   title: string;
+  subtitle: string;
   description: string;
+  triggerType: TriggerType;
+  triggerLabel: string;
+  triggerDescription: string;
   userStories: string[];
   workflow: string;
   workflowName: string;
   claimId?: `0x${string}`;
   consentId?: `0x${string}`;
+  /** For HTTP trigger: JSON payload to send */
+  httpPayload?: string;
   setupSteps?: SetupStep[];
   expectedSteps: ExpectedStep[];
   expectedOutcome: {
@@ -33,32 +43,49 @@ export interface CREScenario {
     payoutStatus?: string;
     consentStatus?: string;
   };
+  /** Dollar amount for display */
+  amount?: string;
+  /** Raw settlement amount in USDC base units (6 decimals) for on-chain writes */
+  settlementAmount?: string;
+  color: string;
 }
 
-function svcUrl(port: number, path: string) {
-  return `/api/services/${port}${path}`;
-}
+const POLICY_HASH = ("0x" + "a1".repeat(32));
+const CONSENT_ID = ("0x" + "c0".repeat(32));
 
 export const scenarios: Record<string, CREScenario> = {
   a: {
     id: "a",
-    title: "Scenario A — Happy Path",
+    title: "Cron Trigger",
+    subtitle: "Time-Driven Batch Prior Auth",
     description:
-      "Valid attestation + proof -> APPROVED -> PAID. Full prior auth flow from submission through on-chain settlement.",
+      "CronCapability fires every 30 seconds. WF-001 polls for outstanding claims, fetches EHR data, evaluates against policy predicates, and settles the full approval-to-payout pipeline on-chain.",
+    triggerType: "cron",
+    triggerLabel: "CronCapability",
+    triggerDescription: "DON fires on a schedule (every 30s in staging). Ideal for batch processing where polling is acceptable.",
     userStories: [
-      "As a provider, I want to submit a prior auth request and receive a decision within minutes.",
-      "As a payer, every decision is evaluated against published policy predicates on a decentralized network.",
-      "As a patient, my medical data never appears on a public blockchain or in oracle logs.",
+      "As a provider, I want outstanding claims processed automatically on a schedule without manual intervention.",
+      "As a payer, I want every batch-processed claim evaluated against the same on-chain policy predicates.",
     ],
     workflow: "wf-001-prior-auth-decision",
     workflowName: "WF-001 Prior Auth Decision",
     claimId: ("0x" + "01".repeat(32)) as `0x${string}`,
+    consentId: CONSENT_ID as `0x${string}`,
+    amount: "$850.00",
+    settlementAmount: "850000000", // $850 in USDC (6 decimals)
+    color: "var(--success)",
     expectedSteps: [
+      {
+        step: 0,
+        title: "Fetch EHR Claims",
+        capability: "ENCRYPTED",
+        description: "GET outstanding BILLED claims from EHR via ConfidentialHTTPClient (AES-GCM encrypted).",
+      },
       {
         step: 1,
         title: "Policy Fetch",
         capability: "HTTP",
-        description: "GET policy predicates from policy-service.",
+        description: "GET policy predicates from policy-service with DON consensus.",
       },
       {
         step: 2,
@@ -89,7 +116,7 @@ export const scenarios: Record<string, CREScenario> = {
         contract: "ClaimDecisionRegistry",
         functionName: "submitClaim",
         onchainEffect: "NONE -> SUBMITTED",
-        description: "Submit claim decision on-chain.",
+        description: "Submit claim on-chain via DON-signed report.",
       },
       {
         step: 6,
@@ -98,7 +125,7 @@ export const scenarios: Record<string, CREScenario> = {
         contract: "ClaimDecisionRegistry",
         functionName: "setProofResult",
         onchainEffect: "SUBMITTED -> APPROVED",
-        description: "Record proof result and advance state to APPROVED.",
+        description: "Record proof result — advance state to APPROVED.",
       },
       {
         step: 7,
@@ -111,24 +138,15 @@ export const scenarios: Record<string, CREScenario> = {
       },
       {
         step: 8,
-        title: "releasePayout",
+        title: "releasePayout + markPaid",
         capability: "EVM_WRITE",
-        contract: "ClaimEscrow",
-        functionName: "releasePayout",
-        onchainEffect: "Payout SCHEDULED -> RELEASED",
-        description: "Release escrowed USDC to provider.",
+        contract: "ClaimEscrow + ClaimDecisionRegistry",
+        functionName: "releasePayout + markPaid",
+        onchainEffect: "APPROVED -> PAID",
+        description: "Release escrowed USDC to treasury and mark claim as PAID (terminal).",
       },
       {
         step: 9,
-        title: "markPaid",
-        capability: "EVM_WRITE",
-        contract: "ClaimDecisionRegistry",
-        functionName: "markPaid",
-        onchainEffect: "APPROVED -> PAID",
-        description: "Mark claim as PAID (terminal state).",
-      },
-      {
-        step: 10,
         title: "Provider Callback",
         capability: "ENCRYPTED",
         description: "Notify provider of decision via encrypted callback.",
@@ -142,131 +160,217 @@ export const scenarios: Record<string, CREScenario> = {
 
   b: {
     id: "b",
-    title: "Scenario B — Revoked Consent",
+    title: "Log Trigger",
+    subtitle: "Event-Driven Transfer Settlement",
     description:
-      "Patient revokes consent -> WF-002 syncs revocation on-chain -> consent status REVOKED.",
+      "EVMClient.logTrigger() fires when ClaimSubmitted is emitted on-chain. WF-007 reacts immediately — no polling, no cron delay. The claim is already SUBMITTED (that's what fired the trigger), so the workflow skips submitClaim and goes straight to settlement.",
+    triggerType: "log",
+    triggerLabel: "EVMClient.logTrigger()",
+    triggerDescription: "DON monitors on-chain events. When ClaimSubmitted(claimId, policyHash) is emitted, the workflow fires with the log data as input.",
     userStories: [
-      "As a patient, my medical data never appears on a public blockchain or in oracle logs.",
-      "As a payer, consent revocation immediately blocks any pending claims.",
+      "As a transfer coordinator, I want inter-department claims settled automatically when submitted on-chain.",
+      "As a CRE developer, I want to demonstrate reactive workflows that fire on on-chain events.",
     ],
-    workflow: "wf-002-consent-revocation",
-    workflowName: "WF-002 Consent Revocation",
-    consentId: ("0x" + "c0".repeat(32)) as `0x${string}`,
+    workflow: "wf-007-claim-transfer-settlement",
+    workflowName: "WF-007 Claim Transfer Settlement",
+    claimId: ("0x" + "07".repeat(32)) as `0x${string}`,
+    consentId: CONSENT_ID as `0x${string}`,
+    amount: "$32,300.00",
+    settlementAmount: "32300000000", // $32,300 in USDC (6 decimals)
+    color: "var(--info)",
     setupSteps: [
       {
         id: "b-setup-1",
-        title: "Revoke Consent via Service",
+        title: "Submit Claim On-Chain",
         description:
-          "Patient revokes HIPAA data sharing authorization through the consent service.",
-        request: {
-          url: svcUrl(3004, "/v1/consents/revoke"),
-          method: "POST",
-          body: {
-            consent_id: ("0x" + "c0".repeat(32)),
-            reason_code: 1,
-          },
+          "Call ClaimDecisionRegistry.submitClaim() to emit the ClaimSubmitted event that triggers WF-007.",
+        type: "cast",
+        cast: {
+          action: "submitClaim",
+          claimId: "0x" + "07".repeat(32),
+          policyHash: POLICY_HASH,
         },
       },
     ],
     expectedSteps: [
       {
+        step: 0,
+        title: "Decode Log Event",
+        capability: "DECODE",
+        description: "Extract claimId from topic[1] and policyHash from log data.",
+      },
+      {
         step: 1,
-        title: "Poll Revocations",
+        title: "Fetch Transfer Data",
         capability: "ENCRYPTED",
-        description: "Fetch pending revocations from consent-service (AES-GCM encrypted).",
+        description: "GET pending transfer claims from EHR (AES-GCM encrypted).",
       },
       {
         step: 2,
-        title: "Check Consent On-Chain",
+        title: "Consent Check",
         capability: "EVM_READ",
         contract: "ConsentRegistry",
-        functionName: "getConsent",
-        description: "Read current consent status from on-chain registry.",
+        functionName: "isConsentActive",
+        description: "Verify patient consent is active on-chain.",
       },
       {
         step: 3,
-        title: "revokeConsent",
-        capability: "EVM_WRITE",
-        contract: "ConsentRegistry",
-        functionName: "revokeConsent",
-        onchainEffect: "ACTIVE -> REVOKED",
-        description: "Revoke consent on-chain if still active.",
+        title: "Policy Check",
+        capability: "EVM_READ",
+        contract: "PolicyRegistry",
+        functionName: "isPolicyActive",
+        description: "Verify policy version is active on-chain.",
       },
       {
         step: 4,
-        title: "Notify Callback",
+        title: "Policy Fetch",
+        capability: "HTTP",
+        description: "GET policy predicates with DON consensus.",
+      },
+      {
+        step: 5,
+        title: "Proof Evaluation",
         capability: "ENCRYPTED",
-        description: "Notify downstream services of revocation (AES-GCM encrypted).",
+        description: "Evaluate transfer claim against policy predicates (AES-GCM encrypted).",
+      },
+      {
+        step: 6,
+        title: "setProofResult",
+        capability: "EVM_WRITE",
+        contract: "ClaimDecisionRegistry",
+        functionName: "setProofResult",
+        onchainEffect: "SUBMITTED -> APPROVED",
+        description: "Record proof result. No submitClaim needed — claim already SUBMITTED from trigger event.",
+      },
+      {
+        step: 7,
+        title: "schedulePayout + releasePayout",
+        capability: "EVM_WRITE",
+        contract: "ClaimEscrow",
+        functionName: "schedulePayout + releasePayout",
+        onchainEffect: "Payout SCHEDULED -> RELEASED",
+        description: "Schedule and release $32,300 payer coverage.",
+      },
+      {
+        step: 8,
+        title: "markPaid + Callback",
+        capability: "EVM_WRITE",
+        contract: "ClaimDecisionRegistry",
+        functionName: "markPaid",
+        onchainEffect: "APPROVED -> PAID",
+        description: "Mark claim as PAID and notify via encrypted callback.",
       },
     ],
     expectedOutcome: {
-      consentStatus: "REVOKED",
+      claimState: "PAID",
+      payoutStatus: "RELEASED",
     },
   },
 
   c: {
     id: "c",
-    title: "Scenario C — Challenge",
+    title: "HTTP Trigger",
+    subtitle: "On-Demand Prior Auth",
     description:
-      "Approved claim challenged by ops -> payout blocked -> resolved after clinical review.",
+      "HTTPCapability fires immediately when a signed HTTP request arrives at the CRE gateway. WF-008 processes the full prior auth with zero delay — all claim data comes from the HTTP payload, saving one ConfidentialHTTP call vs WF-001.",
+    triggerType: "http",
+    triggerLabel: "HTTPCapability",
+    triggerDescription: "Provider signs a request and sends it directly to the CRE gateway. The workflow fires immediately with the full payload as input — no polling, no delay.",
     userStories: [
-      "As an ops reviewer, I want to challenge an approved claim and have the payout automatically blocked.",
-      "As a payer, every decision is evaluated against published policy predicates on a decentralized network.",
+      "As a provider, I want my prior auth processed immediately when I submit it, not on the next cron tick.",
+      "As a CRE developer, I want to show that the same settlement pipeline works with request-driven triggers.",
     ],
-    workflow: "wf-003-challenge-resolution",
-    workflowName: "WF-003 Challenge Resolution",
-    claimId: ("0x" + "e5".repeat(32)) as `0x${string}`,
+    workflow: "wf-008-http-prior-auth",
+    workflowName: "WF-008 HTTP Prior Auth",
+    claimId: ("0x" + "08".repeat(32)) as `0x${string}`,
+    consentId: CONSENT_ID as `0x${string}`,
+    amount: "$38,000.00",
+    settlementAmount: "38000000000", // $38,000 in USDC (6 decimals)
+    color: "var(--accent)",
+    httpPayload: JSON.stringify({
+      claim_id: "0x" + "08".repeat(32),
+      payer_id: "payer-demo-001",
+      procedure_code: "PROC_CARDIAC_CT",
+      requested_amount: "38000",
+      consent_id: "0x" + "c0".repeat(32),
+      policy_hash: "0x" + "a1".repeat(32),
+      service_date: "2026-03-08",
+    }),
     expectedSteps: [
       {
+        step: 0,
+        title: "Decode HTTP Payload",
+        capability: "DECODE",
+        description: "Parse payload.input bytes to JSON — extract claim_id, procedure_code, requested_amount.",
+      },
+      {
         step: 1,
-        title: "Poll Challenges",
-        capability: "ENCRYPTED",
-        description: "Fetch pending challenges from callback-service (AES-GCM encrypted).",
+        title: "Consent Check",
+        capability: "EVM_READ",
+        contract: "ConsentRegistry",
+        functionName: "isConsentActive",
+        description: "Verify patient consent is active on-chain.",
       },
       {
         step: 2,
-        title: "Read Claim State",
+        title: "Policy Check",
         capability: "EVM_READ",
-        contract: "ClaimDecisionRegistry",
-        functionName: "getDecision",
-        description: "Verify current claim state is APPROVED.",
+        contract: "PolicyRegistry",
+        functionName: "isPolicyActive",
+        description: "Verify policy version is active on-chain.",
       },
       {
         step: 3,
-        title: "challengeClaim",
-        capability: "EVM_WRITE",
-        contract: "ClaimDecisionRegistry",
-        functionName: "challengeClaim",
-        onchainEffect: "APPROVED -> CHALLENGED",
-        description: "Challenge the claim — payout automatically blocked.",
+        title: "Policy Fetch",
+        capability: "HTTP",
+        description: "GET policy predicates with DON consensus.",
       },
       {
         step: 4,
-        title: "resolveChallenge",
-        capability: "EVM_WRITE",
-        contract: "ClaimDecisionRegistry",
-        functionName: "resolveChallenge",
-        onchainEffect: "CHALLENGED -> APPROVED",
-        description: "Resolve challenge favorably after clinical review.",
+        title: "Proof Evaluation",
+        capability: "ENCRYPTED",
+        description: "Evaluate against policy predicates (AES-GCM encrypted).",
       },
       {
         step: 5,
-        title: "cancelPayout",
+        title: "submitClaim",
         capability: "EVM_WRITE",
-        contract: "ClaimEscrow",
-        functionName: "cancelPayout",
-        onchainEffect: "SCHEDULED -> CANCELLED",
-        description: "Cancel scheduled payout (if denied — skipped in demo).",
+        contract: "ClaimDecisionRegistry",
+        functionName: "submitClaim",
+        onchainEffect: "NONE -> SUBMITTED",
+        description: "Submit claim on-chain via DON-signed report.",
       },
       {
         step: 6,
-        title: "Resolution Callback",
-        capability: "ENCRYPTED",
-        description: "Notify parties of challenge resolution (AES-GCM encrypted).",
+        title: "setProofResult",
+        capability: "EVM_WRITE",
+        contract: "ClaimDecisionRegistry",
+        functionName: "setProofResult",
+        onchainEffect: "SUBMITTED -> APPROVED",
+        description: "Record proof result — advance state to APPROVED.",
+      },
+      {
+        step: 7,
+        title: "schedulePayout + releasePayout",
+        capability: "EVM_WRITE",
+        contract: "ClaimEscrow",
+        functionName: "schedulePayout + releasePayout",
+        onchainEffect: "Payout SCHEDULED -> RELEASED",
+        description: "Schedule and release $38,000 payer coverage.",
+      },
+      {
+        step: 8,
+        title: "markPaid + Callback",
+        capability: "EVM_WRITE",
+        contract: "ClaimDecisionRegistry",
+        functionName: "markPaid",
+        onchainEffect: "APPROVED -> PAID",
+        description: "Mark claim as PAID and notify via encrypted callback.",
       },
     ],
     expectedOutcome: {
-      claimState: "APPROVED",
+      claimState: "PAID",
+      payoutStatus: "RELEASED",
     },
   },
 };

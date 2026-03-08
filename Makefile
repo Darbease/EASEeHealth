@@ -1,7 +1,7 @@
 .PHONY: install install-contracts install-services install-cre \
        build build-contracts \
        test test-contracts test-services test-dashboard \
-       anvil anvil-stop deploy-local deploy-verify \
+       anvil anvil-stop deploy-local fund-tenderly deploy-tenderly deploy-sepolia deploy-verify \
        services services-stop \
        simulate simulate-wf001 simulate-wf002 simulate-wf004 simulate-wf005 simulate-wf006 simulate-wf008 \
        broadcast broadcast-wf001 broadcast-wf002 broadcast-wf004 broadcast-wf005 broadcast-wf006 broadcast-wf008 \
@@ -78,6 +78,45 @@ deploy-local: build-contracts ## Deploy all contracts to local Anvil
 	forge script script/Deploy.s.sol:Deploy \
 		--rpc-url $(ANVIL_RPC) \
 		--broadcast \
+		-vvv
+
+fund-tenderly: ## Fund deployer on Tenderly Virtual TestNet (100 ETH)
+	@echo "Funding deployer on Tenderly..."
+	@cd contracts && source .env && \
+	curl -s "$$TENDERLY_RPC_URL" \
+		-X POST \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"tenderly_setBalance","params":[["'"$$DEPLOYER_ADDRESS"'"],"0x56BC75E2D63100000"],"id":1}' \
+		| python3 -c "import sys,json; r=json.load(sys.stdin); print('Funded ✓' if 'result' in r else 'Error: '+str(r))"
+
+deploy-tenderly: build-contracts fund-tenderly ## Deploy all contracts to Tenderly Virtual TestNet (Sepolia fork)
+	@echo "Deploying to Tenderly Virtual TestNet..."
+	cd contracts && \
+	source .env && \
+	VERIFY_FLAGS=""; \
+	if [ -n "$$TENDERLY_ACCESS_KEY" ]; then \
+		VERIFY_FLAGS="--verify --etherscan-api-key $$TENDERLY_ACCESS_KEY --verifier-url $$TENDERLY_RPC_URL/verify/etherscan"; \
+	fi; \
+	DEPLOYER_PRIVATE_KEY=$$DEPLOYER_PRIVATE_KEY \
+	forge script script/Deploy.s.sol:Deploy \
+		--rpc-url $$TENDERLY_RPC_URL \
+		--broadcast \
+		$$VERIFY_FLAGS \
+		-vvv
+
+deploy-sepolia: build-contracts ## Deploy all contracts to Eth Sepolia testnet
+	@echo "Deploying to Eth Sepolia..."
+	cd contracts && \
+	source .env && \
+	VERIFY_FLAGS=""; \
+	if [ -n "$$ETHERSCAN_API_KEY" ]; then \
+		VERIFY_FLAGS="--verify --etherscan-api-key $$ETHERSCAN_API_KEY"; \
+	fi; \
+	DEPLOYER_PRIVATE_KEY=$$DEPLOYER_PRIVATE_KEY \
+	forge script script/Deploy.s.sol:Deploy \
+		--rpc-url $$SEPOLIA_RPC_URL \
+		--broadcast \
+		$$VERIFY_FLAGS \
 		-vvv
 
 deploy-verify: ## Verify deployment — check escrow balance and CRE signer role

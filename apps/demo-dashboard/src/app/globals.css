@@ -1,24 +1,42 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
-  --bg: #0a0a0f;
-  --bg-card: #12121a;
-  --bg-card-hover: #1a1a2e;
-  --border: #2a2a3e;
-  --text: #e4e4ef;
-  --text-muted: #8888a0;
-  --accent: #6366f1;
-  --accent-hover: #818cf8;
-  --success: #22c55e;
-  --error: #ef4444;
-  --warning: #f59e0b;
-  --info: #3b82f6;
+  /* Chainlink Brand Palette */
+  --cl-blue: #0847F7;
+  --cl-blue-light: #8AA6F9;
+  --cl-dark: #0B101C;
+  --cl-light: #F8FAFF;
+  --cl-green: #217B71;
+  --cl-orange: #E54918;
+  --cl-yellow: #F7B808;
+  --cl-purple: #4A21C2;
+  --cl-sand: #F2EBE0;
+
+  /* Semantic tokens mapped to Chainlink palette */
+  --bg: #0B101C;
+  --bg-card: #111827;
+  --bg-card-hover: #1A2338;
+  --border: #1E2A42;
+  --text: #F8FAFF;
+  --text-muted: #7B8BA8;
+  --accent: #0847F7;
+  --accent-hover: #8AA6F9;
+  --success: #217B71;
+  --error: #E54918;
+  --warning: #F7B808;
+  --info: #8AA6F9;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 ::-webkit-scrollbar {
@@ -33,11 +51,11 @@ body {
   border-radius: 3px;
 }
 
-.json-key { color: #818cf8; }
-.json-string { color: #34d399; }
-.json-number { color: #f59e0b; }
-.json-boolean { color: #f472b6; }
-.json-null { color: #8888a0; }
+.json-key { color: #8AA6F9; }
+.json-string { color: #217B71; }
+.json-number { color: #F7B808; }
+.json-boolean { color: #8AA6F9; }
+.json-null { color: #7B8BA8; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }

@@ -1,6 +1,100 @@
 # ProofPA
 
-Privacy-preserving prior authorization and claim payout using Chainlink CRE, signed attestations, and onchain settlement — Currently Anvil Local Chain
+**Privacy-preserving prior authorization and instant on-chain settlement using Chainlink CRE**
+
+---
+
+## The Problem
+
+Prior authorization is the most hated process in American healthcare.
+
+A physician decides a patient needs a $38,000 coronary stent. They fax — yes, fax — a request to the insurance company. A nurse reviewer looks at it 3-7 business days later. Maybe they approve it. Maybe they deny it and the physician appeals. Maybe the paperwork gets lost. The patient waits.
+
+- **72%** of physicians report that prior auth delays lead to adverse patient outcomes
+- **14 hours/week** per practice spent on prior auth phone calls and fax follow-ups
+- **$528 billion** in annual US healthcare administrative costs (31% of total spending)
+- **34%** of prior auth denials are eventually overturned on appeal — meaning the initial denial was wrong
+- **$100B+** in annual fraud because verification is manual, siloed, and trust-based
+
+The core dysfunction: every party maintains their own version of truth, nobody can verify anyone else's claims in real time, and the entire process runs on phone calls and PDFs.
+
+---
+
+## How ProofPA Fixes It
+
+We mapped every actor and every step in traditional prior auth to a cryptographic equivalent:
+
+| Traditional System | ProofPA Equivalent | What Changes |
+|---|---|---|
+| Fax/portal submission | `POST /submit` + `submitClaim()` on-chain | Submission is atomic and timestamped — no lost faxes |
+| Patient consent form (paper) | `ConsentRegistry.isConsentActive()` on-chain | Consent is verifiable in real time, revocable instantly |
+| Policy manual (PDF binder) | `PolicyRegistry.isPolicyActive()` + versioned predicate hashes | Policy is deterministic code, not human interpretation |
+| Nurse clinical reviewer | `proof-service` — 6-8 predicate evaluation with bitmap | Review is reproducible — same inputs always produce same output |
+| Approval letter (mailed) | `setProofResult()` on-chain with reason bitmap | Decision is immutable and machine-readable |
+| Paper check (30 days) | `ClaimEscrow.releasePayout()` — ERC-20 transfer | Settlement is instant — seconds, not weeks |
+| Appeal process (months) | `challengeClaim()` + `resolveChallenge()` — state machine enforced | Disputes are structured — payout freezes until resolution |
+
+**The key insight**: we didn't automate paperwork — we replaced trust assumptions with verification. The traditional system *trusts* that the provider's credential is valid, that consent was really given, that the procedure is really covered. ProofPA *verifies* each of those claims against on-chain state and signed attestations before any money moves.
+
+---
+
+## Why Chainlink CRE
+
+The question isn't just "can we automate prior auth?" — it's "who runs the automation, and why should anyone trust it?"
+
+If a payer runs the decisioning logic on their own server, the provider has no reason to trust the result. If the provider runs it, the payer has no reason to trust it. And if you put it on a simple smart contract, you can't call external APIs for clinical data, credential verification, or policy lookups.
+
+**Chainlink CRE solves the multi-party trust problem.** The workflow runs on a Decentralized Oracle Network (DON) — not on any single party's infrastructure. The DON nodes independently execute the same logic, reach consensus on HTTP responses, and sign the result. The on-chain contracts verify that signature before accepting any state transition. Nobody has to trust anyone — they verify.
+
+### The Four CRE Capabilities We Use
+
+| Capability | What It Does | Why It Matters |
+|---|---|---|
+| **HTTPClient** (DON Consensus) | All DON nodes make the same API call independently and compare responses | If anyone tampers with the policy API, the workflow halts. Every API call is cross-verified. |
+| **ConfidentialHTTPClient** (AES-GCM) | Encrypted API calls — DON node operators cannot read the payloads | HIPAA-compliant data handling. More secure than the fax machines it replaces. |
+| **EVMClient** (Read + Write) | On-chain reads and DON-signed writes to smart contracts | Single source of truth. Contracts verify DON signatures — no single entity can forge a decision. |
+| **HTTPCapability** (HTTP Trigger) | Workflow fires instantly on signed HTTP request | Cryptographic access control via ECDSA signatures — not API keys, not OAuth tokens. |
+
+### Three Trigger Types — Three Clinical Urgency Levels
+
+We built **8 CRE workflows** using all three trigger types. Each maps to a different operational model:
+
+| Trigger | Workflows | Use Case | Latency |
+|---|---|---|---|
+| **Cron** (CronCapability) | WF-001, WF-004, WF-005, WF-006 | Batch processing, monitoring, auditing | Every 30s |
+| **Log** (EVMClient.logTrigger) | WF-003, WF-007 | Reactive — fires on on-chain events | Instant (event-driven) |
+| **HTTP** (HTTPCapability) | WF-002, WF-008 | On-demand — fires on signed request | Instant (request-driven) |
+
+Together they create a layered reliability model: HTTP handles the fastest path, Log handles reactive processing, Cron catches anything that fell through. Nothing falls through the cracks.
+
+---
+
+## What We Built — By the Numbers
+
+- **8** CRE workflows using all 3 trigger types (cron, log, HTTP)
+- **5** Solidity contracts with 52 Foundry tests (unit + fuzz + invariant)
+- **6** backend TypeScript services
+- **4** shared packages (@proofpa/schemas, eip712-types, observability, sdk-client)
+- **1** interactive Next.js 16 dashboard with live on-chain state and streaming CRE output
+- **Full settlement pipeline**: Reset Chain → Deploy Contracts → Run CRE Workflow → Settle On-Chain — all from the browser
+- **AES-GCM encryption** on every ConfidentialHTTP call across all 8 workflows
+- **8-bit denial reason bitmap** for structured, machine-readable denial explanations
+- **Zero PHI on-chain** — only hashes, state transitions, policy references, and payout events
+- **Synthea-based clinical data** (10 CSV files) for realistic healthcare scenarios
+
+---
+
+## Live Demo Dashboard
+
+The dashboard (Next.js 16 + React 19 + TanStack Query) connects directly to the local Anvil chain and all six backend services. Three demo scenarios — one per trigger type:
+
+| Scenario | Trigger | Workflow | Claim Amount | What Happens |
+|---|---|---|---|---|
+| **A** — Batch Prior Auth | Cron | WF-001 | $850 knee MRI | Classic batch path. CRE polls, evaluates, settles. |
+| **B** — Transfer Settlement | Log | WF-007 | $32,300 cardiac stent | `submitClaim()` emits event → WF-007 fires reactively → settles instantly. |
+| **C** — On-Demand Prior Auth | HTTP | WF-008 | $38,000 cardiac CT | Signed HTTP request → WF-008 fires with full payload → zero-delay settlement. |
+
+Each scenario shows live on-chain state (claim state machine, payout status, proof hash, escrow balance) auto-refreshing every 2 seconds, plus streaming CRE workflow output via Server-Sent Events.
 
 ---
 

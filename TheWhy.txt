@@ -1,0 +1,350 @@
+ProofPA — Judges Briefing
+
+  The Problem We're Solving
+
+  Prior authorization is the most hated process in American healthcare. Today it works like this:
+
+  A physician decides a patient needs a $38,000 coronary stent. They fax — yes, fax — a request to the insurance company.
+   A nurse reviewer at the payer looks at it 3-7 business days later. Maybe they approve it. Maybe they deny it and the
+  physician appeals. Maybe the paperwork gets lost. The patient waits.
+
+  72% of physicians report that prior auth delays lead to adverse patient outcomes. The average practice spends 14 hours
+  per week on prior auth phone calls and fax follow-ups. Payers spend billions staffing review queues. And despite all
+  this friction, fraud still costs the system $100B+ annually because verification is manual, siloed, and trust-based.
+
+  The core dysfunction: every party maintains their own version of truth, nobody can verify anyone else's claims in real
+  time, and the entire process runs on phone calls and PDFs.
+
+  ---
+  How ProofPA Mirrors — Then Surpasses — The Traditional System
+
+  The Traditional Flow
+
+  Provider → Fax/Portal → Payer Review Queue → Manual Clinical Review
+  → Phone Call Back → Maybe Approved → Paper Check 30 Days Later
+
+  The ProofPA Flow
+
+  Provider Portal → On-Chain Claim Submission → CRE Workflow Fires
+  → Automated Consent + Policy + Clinical Verification
+  → Deterministic Decision → Instant ERC-20 Settlement → Callback
+
+  We didn't throw away the traditional model. We mapped every actor and every step to a cryptographic equivalent:
+
+  ┌─────────────────┬────────────────────────────────────────────────────────┬───────────────────────────────────────┐
+  │  Traditional    │                   ProofPA Equivalent                   │             What Changes              │
+  │     System      │                                                        │                                       │
+  ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+  │ Fax/portal      │ POST /v1/prior-auth/submit → submitClaim() on-chain    │ Submission is atomic and timestamped  │
+  │ submission      │                                                        │ — no lost faxes                       │
+  ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+  │ Patient consent │ ConsentRegistry.isConsentActive() — on-chain boolean   │ Consent is verifiable in real time,   │
+  │  form (paper)   │ with expiry                                            │ revocable instantly, auditable         │
+  │                 │                                                        │ forever                               │
+  ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+  │ Policy manual   │ PolicyRegistry.isPolicyActive() + versioned predicate  │ Policy is deterministic code, not     │
+  │ (PDF binder)    │ hashes                                                 │ human interpretation                  │
+  ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+  │ Nurse clinical  │ proof-service-stub — 6-8 predicate evaluation          │ Review is reproducible — same inputs  │
+  │ reviewer        │ (credential, coverage, cap, consent, duplicate,        │ always produce same output, with a    │
+  │                 │ attestation freshness)                                 │ bitmap explaining exactly why         │
+  ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+  │ Approval letter │ setProofResult() on-chain with reason bitmap           │ Decision is immutable and             │
+  │  (mailed)       │                                                        │ machine-readable                      │
+  ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+  │ Paper check (30 │ ClaimEscrow.schedulePayout() → releasePayout() —       │ Settlement is instant — seconds, not  │
+  │  days)          │ ERC-20 transfer                                        │ weeks                                 │
+  ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
+  │ Appeal process  │ challengeClaim() → resolveChallenge() — state machine  │ Disputes are structured — the         │
+  │ (months)        │ enforced                                               │ contract enforces that payout freezes │
+  │                 │                                                        │  until resolution                     │
+  └─────────────────┴────────────────────────────────────────────────────────┴───────────────────────────────────────┘
+
+  The key insight: we didn't automate paperwork, we replaced trust assumptions with verification. The traditional system
+  trusts that the provider's credential is valid, that consent was really given, that the procedure is really covered.
+  ProofPA verifies each of those claims against on-chain state and signed attestations before any money moves.
+
+  ---
+  Why CRE Is The Right Orchestration Layer
+
+  This is where the architecture gets interesting. The question isn't just "can we automate prior auth?" — it's "who runs
+   the automation, and why should anyone trust it?"
+
+  If a payer runs the decisioning logic on their own server, the provider has no reason to trust the result. If the
+  provider runs it, the payer has no reason to trust it. And if you put it on a simple smart contract, you can't call
+  external APIs for clinical data, credential verification, or policy lookups.
+
+  Chainlink CRE solves the multi-party trust problem. The workflow runs on a Decentralized Oracle Network (DON) — not on
+  any single party's infrastructure. The DON nodes independently execute the same logic, reach consensus on HTTP
+  responses, and sign the result. The on-chain contracts verify that signature before accepting any state transition.
+  Nobody has to trust anyone — they verify.
+
+  The Four CRE Capabilities and What They Enable
+
+  1. HTTPClient (with DON Consensus)
+
+  When WF-001 or WF-007 fetches a policy from the policy service, every DON node makes the same HTTP call independently.
+  They compare responses through consensusIdenticalAggregation — if any node gets a different answer (because someone
+  tampered with the API, or a man-in-the-middle attack occurred), the workflow halts. This is something no traditional
+  system does: every API call is cross-verified by multiple independent parties.
+
+  In traditional prior auth, the payer's system calls its own policy database. Nobody checks whether that database
+  returned the same answer it would have returned yesterday. With CRE, the consensus mechanism ensures that policy
+  lookups are deterministic and tamper-evident.
+
+  2. ConfidentialHTTPClient (AES-GCM Encrypted)
+
+  This is the privacy layer. When WF-007 fetches TRANSFERIN data from the EHR, or when any workflow calls the proof
+  service with clinical details, those payloads contain sensitive information — procedure codes, amounts, patient
+  encounter references. The ConfidentialHTTPClient with encryptOutput: true ensures that DON node operators cannot read
+  the response payloads. The data is encrypted with AES-GCM using a vault-managed key, decrypted only within the
+  workflow's WASM sandbox.
+
+  This solves a real regulatory problem: HIPAA requires that protected health information be encrypted in transit and
+  accessible only to authorized parties. Traditional prior auth sends PHI over fax machines and unencrypted portal
+  uploads. ProofPA's confidential HTTP calls are more HIPAA-compliant than the system they replace.
+
+  We use 3 confidential calls per workflow for the sensitive operations (EHR data fetch, proof evaluation, callback
+  notification) while using plain HTTP with consensus for non-sensitive operations (policy lookup). This is a deliberate
+  design choice — confidential HTTP doesn't have cross-node consensus on the response content (it can't, since nodes
+  can't see each other's decrypted data), so we only use it where privacy outweighs the consensus guarantee.
+
+  3. EVMClient (On-Chain Read + Write)
+
+  Every workflow reads consent and policy state from on-chain contracts before making a decision, and writes the decision
+   back on-chain. This creates a single source of truth that all parties can independently verify.
+
+  The callContract reads use LATEST_BLOCK_NUMBER to get real-time state — if consent was revoked 2 seconds ago, the
+  workflow sees it immediately. The writeReport writes use DON-signed reports that the contracts verify via WORKFLOW_ROLE
+   access control — no single entity can forge a decision.
+
+  The two-phase write pattern (prepareReportRequest → writeReport) is critical: the DON nodes reach consensus on what
+  calldata to submit, then the signed report is submitted on-chain. The contract doesn't trust the caller — it trusts the
+   DON signature.
+
+  4. HTTPCapability (HTTP Trigger)
+
+  WF-008 uses the fourth CRE capability: HTTPCapability as a trigger. Instead of polling on a schedule (cron) or watching
+  for on-chain events (log), the workflow fires immediately when a signed HTTP request arrives at the CRE gateway.
+
+  This is the lowest-latency path. The provider signs a request containing the full prior auth payload — claim ID,
+  procedure code, requested amount, consent ID, policy hash — and sends it directly to the DON. The workflow fires
+  instantly with the payload as input. No EHR fetch needed (the data is already in the request), no polling delay, no
+  event emission required.
+
+  The HTTPCapability validates the request signature against a configured authorized key list, ensuring that only
+  credentialed providers can trigger workflows. This is cryptographic access control — not API keys, not OAuth tokens,
+  but ECDSA signatures that the DON verifies before executing any logic.
+
+  ---
+  The Three Trigger Types: Why All Three Matter
+
+  We built eight CRE workflows using all three trigger types that CRE supports. This isn't feature creep — each trigger
+  type maps to a fundamentally different operational model in healthcare, and a production system needs all three.
+
+  CronCapability (WF-001 through WF-006) — Batch Processing
+
+  Six workflows use cron triggers. This mirrors how traditional prior auth actually works: payers process batches of
+  requests on a schedule. Claims accumulate, then get reviewed.
+
+  But unlike traditional batch processing (which happens once a day, or once a week), CRE cron triggers fire every 30
+  seconds. This compresses the decision cycle from days to seconds while maintaining the batch-processing mental model
+  that payer operations teams understand.
+
+  Cron-triggered workflows are ideal for:
+  - Proactive monitoring — WF-004 runs every 30s looking for stuck claims (state = PROOF_PENDING for >15 minutes).
+  Traditional systems discover stuck claims when someone complains. ProofPA discovers them automatically.
+  - Periodic audits — WF-005 runs an encrypted credential audit cycle, verifying provider credentials haven't expired.
+  Traditional systems check credentials at enrollment time and maybe annually. ProofPA checks continuously.
+  - Batch settlement — WF-001 and WF-006 process the next pending claim each cycle, mimicking the traditional "work the
+  queue" model but at machine speed.
+
+  EVMClient.logTrigger (WF-007) — Event-Driven
+
+  WF-007 is fundamentally different. It doesn't poll. It reacts.
+
+  When submitClaim() is called on-chain and emits a ClaimSubmitted(bytes32 indexed claimId, bytes32 policyHash) event,
+  WF-007 fires immediately. The trigger is configured with a FilterLogTriggerRequestJson that watches for that specific
+  event signature at that specific contract address.
+
+  This is the model for real-time prior auth — the moment a claim enters the system, the workflow starts evaluating it.
+  No queue. No batch window. No human pulling the next ticket.
+
+  And because the trigger data comes from the log itself — claimId from topics[1], policyHash from data — the workflow
+  knows exactly which claim triggered it without needing to scan a queue. It skips submitClaim entirely (that already
+  happened, it's what triggered us) and goes straight to verification and settlement.
+
+  HTTPCapability (WF-008) — Request-Driven
+
+  WF-008 completes the triangle. It fires the instant a signed HTTP request hits the CRE gateway — no on-chain event
+  needed, no polling interval. The provider submits a prior auth request and the workflow starts executing before the
+  next block is mined.
+
+  This is the model for urgent prior auth — emergency procedures, time-sensitive medications, cases where a 30-second
+  cron delay is too long. The provider signs a request with all the necessary data (claim details, consent reference,
+  policy hash), the DON verifies the signature, and the workflow executes immediately.
+
+  WF-008 saves one ConfidentialHTTP call compared to WF-001 because it doesn't need to fetch EHR data — the submission
+  payload contains everything the workflow needs. This is a deliberate efficiency gain: by front-loading the data into
+  the trigger, we reduce the workflow's external dependency count and latency.
+
+  The Power of Using All Three Together
+
+  Here's where the architecture compounds:
+
+  1. WF-008 (HTTP trigger) handles urgent requests with zero latency — the provider gets an answer before they leave
+  the exam room
+  2. WF-007 (log trigger) reacts instantly to on-chain claim submissions, handling the automated happy path in seconds
+  3. WF-001 (cron trigger) catches anything that fell through — batch-processes outstanding claims every 30 seconds
+  4. WF-004 (cron trigger) monitors every 30 seconds for any claims that the fast-path workflows couldn't settle —
+  network errors, temporary service outages, edge cases
+  5. WF-003 (cron trigger) watches for challenge events and blocks payouts until resolution
+  6. WF-002 (cron trigger) watches for consent revocations and retroactively flags any pending claims that lost consent
+  7. WF-005 (cron trigger) continuously audits provider credentials with full AES-GCM encryption
+  8. WF-006 (cron trigger) handles pharmaceutical benefit checks with medication-specific predicates
+
+  This creates a layered reliability model: the HTTP workflow handles the fastest path, the event-driven workflow handles
+  the reactive path, the cron workflows handle the fallback and monitoring paths, and nothing falls through the cracks.
+  Traditional prior auth has none of this — if a fax gets lost, nobody knows until the provider calls to ask what
+  happened.
+
+  ---
+  The Live Dashboard: Seeing the Architecture in Action
+
+  We didn't just build workflows — we built a live interactive dashboard that lets you watch the entire system work in
+  real time. The dashboard (Next.js 16 + React 19 + TanStack Query) connects directly to the local Anvil chain and
+  all six backend services.
+
+  Three Demo Scenarios — One Per Trigger Type
+
+  Scenario A — Cron Trigger (WF-001): $850 knee MRI prior auth. The classic batch path. Click "Reset & Deploy" to
+  deploy fresh contracts, click "Run" to execute the CRE workflow, click "Settle" to write the full settlement pipeline
+  on-chain. Watch the state machine diagram highlight NONE → SUBMITTED → APPROVED → PAID in real time as each contract
+  call lands.
+
+  Scenario B — Log Trigger (WF-007): $32,300 cardiac stent transfer settlement. The dashboard calls submitClaim() via
+  cast to emit the ClaimSubmitted event, captures the transaction hash, and passes it to the CRE workflow via
+  --evm-tx-hash. The workflow fires reactively — no polling — and settles the transfer claim end-to-end.
+
+  Scenario C — HTTP Trigger (WF-008): $38,000 cardiac CT on-demand prior auth. The dashboard passes the full JSON
+  payload (claim_id, procedure_code, requested_amount, consent_id, policy_hash) to the CRE workflow via --http-payload.
+  The workflow fires instantly with zero external data fetch — everything it needs is in the request.
+
+  What You See After Each Scenario
+
+  The On-Chain State panel auto-refreshes every 2 seconds, showing:
+  - Claim State: NONE → SUBMITTED → APPROVED → PAID (highlighted in the state machine SVG)
+  - Payout Status: NONE → SCHEDULED → RELEASED (with dollar amount and treasury recipient)
+  - Proof Hash: the 0xb8b8... hash written by setProofResult — proof that the claim was evaluated
+  - Policy Hash: the 0xa1a1... hash linking this claim to the specific policy version that was applied
+  - Consent Status: ACTIVE (verified on-chain before any decision was made)
+  - Escrow Pool Balance: decreases by the payout amount after releasePayout (from $1M → $999,150 after the $850 MRI)
+
+  The CRE Workflow Output panel streams the actual workflow execution logs in real time via Server-Sent Events. You see
+  every capability call — every HTTP fetch, every EVM read, every encrypted call, every on-chain write — as it happens.
+
+  System Health monitors all seven infrastructure components (Anvil + 6 services) with green/red status dots, auto-
+  refreshing every 10 seconds.
+
+  The Contract Explorer page lets you query any claim ID, consent ID, or policy hash directly against the on-chain
+  contracts. Type in a claim ID and see the full decision struct: state, proof hash, policy hash, reason bitmap,
+  timestamp. This is the audit trail — everything is on-chain and queryable.
+
+  ---
+  Cost-Benefit Analysis
+
+  What Traditional Prior Auth Costs
+
+  - Provider side: 14 hours/week of staff time per practice × $45/hr = ~$33,000/year per practice
+  - Payer side: $3.14 per manual review × millions of reviews = hundreds of millions per year
+  - Patient side: 3-7 day delays, with 34% of prior auth denials eventually overturned on appeal (meaning the initial
+  denial was wrong)
+  - System-wide: $528 billion in administrative costs annually (31% of US healthcare spending)
+
+  What ProofPA Costs
+
+  - On-chain gas: ~120K gas per claim submission + ~500K gas per workflow execution = ~$0.02-0.05 per claim on Base
+  Sepolia (L2 fees)
+  - DON execution: CRE compute costs amortized across the DON (no per-call billing in current model)
+  - Infrastructure: 6 lightweight Express services, a single Foundry deployment — runs on a $20/month VPS
+  - Settlement: Instant ERC-20 transfer vs. 30-day paper check float. For a $38,000 stent claim, 30 days of float at 5%
+  APR costs $156. Multiply by millions of claims.
+
+  The Efficiency Multipliers
+
+  1. Zero marginal review cost: Once the workflow is deployed, the 6-8 predicate evaluation runs automatically. No human
+  reviewer needed for straightforward cases. The traditional system pays a nurse reviewer $40/hour to check boxes that a
+  machine can check in milliseconds.
+  2. Instant finality: The state machine enforces that SUBMITTED → APPROVED → PAID happens atomically within a single
+  workflow execution. No "check back in 5 business days."
+  3. Eliminates duplicate work: The claim_id = keccak256(payer_id | provider_id_hash | encounter_ref_hash |
+  procedure_code | service_date) is deterministic. The contract reverts on duplicate submissions. Traditional systems
+  process duplicate faxes constantly.
+  4. Structured denials: The reason bitmap (8 bits for 8 denial reasons) eliminates ambiguous denial letters. The
+  provider knows exactly what failed — bit 1 means the procedure isn't covered, bit 3 means consent is invalid.
+  Traditional denial letters are free-text and frequently unclear, driving appeal cycles.
+  5. Audit trail is automatic: Every state transition emits an on-chain event. Every service call emits structured JSON
+  with correlation_id, claim_id, workflow_id. There's no "we need to pull the file" — the entire history is queryable
+  on-chain and in logs. Compliance audits that take weeks in traditional systems take minutes.
+
+  ---
+  The Five Contracts: Why This Architecture
+
+  We deliberately chose five narrow contracts over one monolithic contract:
+
+  - MockUSDC: Settlement is in a standard ERC-20, not a custom token. Any wallet, any block explorer, any DeFi
+  integration can read balances and transfers. Payers fund the escrow pool; payouts go to provider treasury addresses.
+  - ConsentRegistry: Consent is separated from claims because consent has its own lifecycle — it can be granted, revoked,
+   and expire independently. WF-002 can revoke consent without touching any claim state. This mirrors the HIPAA
+  requirement that consent is patient-controlled and revocable at any time.
+  - PolicyRegistry: Policy versions are hashed and stored separately because policies change. When a payer updates
+  coverage terms, they store a new version hash. Old claims are evaluated against the policy version that was active at
+  submission time, not today's version. This prevents retroactive coverage changes — a real problem in traditional prior
+  auth.
+  - ClaimDecisionRegistry: The state machine is the core. It enforces that claims can only move through valid
+  transitions, that PAID is terminal, that CHALLENGED blocks payout. No amount of off-chain logic can violate these
+  invariants — the contract simply reverts.
+  - ClaimEscrow: Settlement is separated from decisioning because they have different trust requirements. The escrow
+  holds actual funds (mock USDC). It needs WORKFLOW_ROLE to schedule and release payouts, and TREASURY_ROLE to withdraw.
+  This separation means a bug in the decision logic can't directly drain the escrow — it can only authorize payouts
+  through the proper two-step process.
+
+  ---
+  What We Built — By the Numbers
+
+  - 8 CRE workflows using all 3 trigger types (cron, log, HTTP)
+  - 5 Solidity contracts with 52 Foundry tests (unit + fuzz + invariant)
+  - 6 backend TypeScript services
+  - 4 shared packages (@proofpa/schemas, eip712-types, observability, sdk-client)
+  - 1 interactive Next.js 16 dashboard with live on-chain state, streaming CRE output, and one-click demo scenarios
+  - Full settlement pipeline: Reset Chain → Deploy Contracts → Run CRE Workflow → Settle On-Chain — all from the browser
+  - AES-GCM encryption on every ConfidentialHTTP call across all 8 workflows
+  - Deterministic Anvil deployment with role-based access control (WORKFLOW_ROLE, POLICY_ADMIN, CHALLENGE_ROLE, TREASURY)
+  - Synthea-based clinical data (10 CSV files) served via Express, fetched by workflows via ConfidentialHTTPClient
+  - 8-bit denial reason bitmap for structured, machine-readable denial explanations
+  - Zero PHI on-chain — only hashes, state transitions, policy references, and payout events
+
+  ---
+  What We're Really Demonstrating
+
+  ProofPA isn't just "prior auth on a blockchain." It's a proof of concept for a new trust architecture in healthcare:
+
+  1. Verification replaces trust — Instead of trusting that a provider's credentials are valid, we verify it. Instead of
+  trusting that consent was given, we check on-chain. Instead of trusting that the payer applied the policy correctly, we
+   run the same predicates on a DON.
+  2. Privacy and transparency coexist — No PHI goes on-chain (only hashes and state), but every decision is auditable.
+  Confidential HTTP protects sensitive data in transit. The on-chain audit trail proves that a decision was made
+  correctly without revealing what clinical data was involved.
+  3. CRE bridges the on-chain/off-chain gap — Smart contracts can't call APIs. Traditional systems can't guarantee
+  deterministic execution. CRE workflows do both: they call external services with DON consensus and write results to the
+   chain with cryptographic proof of correct execution.
+  4. All three triggers serve different clinical urgency levels — HTTP for urgent (instant), Log for reactive (event-
+  driven), Cron for batch (scheduled). A production prior auth system needs all three, and CRE provides all three
+  through a unified workflow framework.
+  5. The architecture generalizes — We proved this by extending from procedures (WF-001) to medications (WF-006) to
+  transfer claims (WF-007) to on-demand prior auth (WF-008) without changing a single contract. The same five contracts,
+  the same state machine, the same settlement flow — different clinical contexts, different trigger types, same
+  verification guarantees.
+
+  The $528 billion question isn't whether healthcare administration can be automated. It's whether automation can be
+  trusted by all parties simultaneously. CRE makes that possible. ProofPA proves it works.

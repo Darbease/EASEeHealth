@@ -106,7 +106,7 @@ function ClaimLookup() {
 
       {decision && state !== null && (
         <div className="mt-4 space-y-4">
-          <StateMachine currentState={state} />
+          <StateMachine claimId={submittedId} />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-[var(--bg)] p-3">

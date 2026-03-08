@@ -8,6 +8,9 @@ const CRE_DIR = process.env.CRE_DIR || path.resolve(process.cwd(), "../../ProofP
 export async function GET(req: NextRequest) {
   const workflow = req.nextUrl.searchParams.get("workflow");
   const broadcast = req.nextUrl.searchParams.get("broadcast") === "true";
+  const httpPayload = req.nextUrl.searchParams.get("httpPayload");
+  const evmTxHash = req.nextUrl.searchParams.get("evmTxHash");
+  const evmEventIndex = req.nextUrl.searchParams.get("evmEventIndex");
 
   if (!workflow || !/^wf-\d{3}-[\w-]+$/.test(workflow)) {
     return new Response(JSON.stringify({ error: "Invalid workflow name" }), {
@@ -26,8 +29,21 @@ export async function GET(req: NextRequest) {
         "simulate",
         `./${workflow}`,
         `--target=${target}`,
+        "--non-interactive",
+        "--trigger-index=0",
       ];
       if (broadcast) args.push("--broadcast");
+
+      // HTTP trigger: pass inline JSON payload
+      if (httpPayload) {
+        args.push(`--http-payload=${httpPayload}`);
+      }
+
+      // Log trigger: pass transaction hash and event index
+      if (evmTxHash) {
+        args.push(`--evm-tx-hash=${evmTxHash}`);
+        args.push(`--evm-event-index=${evmEventIndex || "0"}`);
+      }
 
       const cre = spawn(CRE_BIN, args, {
         cwd: CRE_DIR,
@@ -46,7 +62,6 @@ export async function GET(req: NextRequest) {
 
       cre.stdout.on("data", (data: Buffer) => {
         const text = data.toString();
-        // Split by newlines to send each line separately
         for (const line of text.split("\n").filter(Boolean)) {
           send("log", { text: line });
         }
@@ -70,7 +85,6 @@ export async function GET(req: NextRequest) {
         controller.close();
       });
 
-      // Clean up on abort
       req.signal.addEventListener("abort", () => {
         cre.kill("SIGTERM");
       });

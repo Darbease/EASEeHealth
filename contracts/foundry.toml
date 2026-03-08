@@ -17,6 +17,15 @@ runs = 1000
 runs = 512
 depth = 50
 
+[rpc_endpoints]
+anvil = "http://127.0.0.1:8545"
+tenderly = "${TENDERLY_RPC_URL}"
+sepolia = "${SEPOLIA_RPC_URL}"
+
+[etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY}", chain = 11155111 }
+unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 99911155111, url = "https://virtual.rpc.tenderly.co/darbease/project/private/EASEEHEALTH/1388c5f2-fe5e-49bf-8321-4b36c028ef3a/verify/etherscan" }
+
 [fmt]
 line_length = 120
 tab_width = 4

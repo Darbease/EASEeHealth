@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
+import {HelperConfig} from "./HelperConfig.s.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
 import {ConsentRegistry} from "../src/ConsentRegistry.sol";
 import {PolicyRegistry} from "../src/PolicyRegistry.sol";
@@ -10,14 +11,28 @@ import {ClaimEscrow} from "../src/ClaimEscrow.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title Deploy — Deploys all ProofPA contracts, grants roles, seeds demo data
+/// @notice Uses HelperConfig for network-aware configuration.
+///         Anvil (31337): deterministic accounts, no env vars needed.
+///         Sepolia / Tenderly fork (11155111): reads DEPLOYER_PRIVATE_KEY from env.
 contract Deploy is Script {
     function run() external {
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
-        address creSigner = vm.envAddress("CRE_SIGNER_ADDRESS");
-        address opsAddress = vm.envAddress("OPS_ADDRESS");
-        address treasuryAddress = vm.envAddress("TREASURY_ADDRESS");
+        HelperConfig helperConfig = new HelperConfig();
+        (
+            uint256 deployerKey,
+            address deployer,
+            address creSigner,
+            address opsAddress,
+            address treasuryAddress
+        ) = helperConfig.activeConfig();
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        console.log("--- Network Config ---");
+        console.log("Chain ID:", block.chainid);
+        console.log("Deployer:", deployer);
+        console.log("CRE Signer:", creSigner);
+        console.log("Ops:", opsAddress);
+        console.log("Treasury:", treasuryAddress);
+
+        vm.startBroadcast(deployerKey);
 
         // 1. Deploy MockUSDC
         MockUSDC usdc = new MockUSDC();
@@ -111,8 +126,5 @@ contract Deploy is Script {
         console.log("PolicyRegistry:", address(policy));
         console.log("ClaimDecisionRegistry:", address(claims));
         console.log("ClaimEscrow:", address(escrow));
-        console.log("CRE Signer:", creSigner);
-        console.log("Ops Address:", opsAddress);
-        console.log("Treasury Address:", treasuryAddress);
     }
 }

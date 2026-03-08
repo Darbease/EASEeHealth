@@ -8,6 +8,13 @@ export interface LogLine {
   timestamp: string;
 }
 
+export interface WorkflowOptions {
+  broadcast?: boolean;
+  httpPayload?: string;
+  evmTxHash?: string;
+  evmEventIndex?: string;
+}
+
 export function colorize(line: LogLine): string {
   if (line.type === "error") return "text-[var(--error)]";
   if (line.type === "done") return "text-[var(--success)] font-semibold";
@@ -28,7 +35,7 @@ export function useWorkflowStream() {
   const abortRef = useRef<AbortController | null>(null);
 
   const startWorkflow = useCallback(
-    async (workflowId: string, broadcast = false) => {
+    async (workflowId: string, opts: WorkflowOptions = {}) => {
       if (isRunning) return;
       setActiveWorkflow(workflowId);
       setLogs([]);
@@ -39,7 +46,10 @@ export function useWorkflowStream() {
 
       try {
         const params = new URLSearchParams({ workflow: workflowId });
-        if (broadcast) params.set("broadcast", "true");
+        if (opts.broadcast) params.set("broadcast", "true");
+        if (opts.httpPayload) params.set("httpPayload", opts.httpPayload);
+        if (opts.evmTxHash) params.set("evmTxHash", opts.evmTxHash);
+        if (opts.evmEventIndex) params.set("evmEventIndex", opts.evmEventIndex);
 
         const res = await fetch(`/api/simulate?${params}`, {
           signal: abort.signal,

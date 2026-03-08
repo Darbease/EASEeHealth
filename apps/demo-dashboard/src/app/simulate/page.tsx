@@ -4,41 +4,68 @@ import { useRef } from "react";
 import Link from "next/link";
 import { useWorkflowStream, colorize } from "@/lib/useWorkflowStream";
 
+const TRIGGER_STYLES: Record<string, { label: string; className: string }> = {
+  cron: { label: "Cron", className: "bg-[#217B71]/15 text-[#2ecfbe]" },
+  log: { label: "Log", className: "bg-[#F7B808]/15 text-[#F7B808]" },
+  http: { label: "HTTP", className: "bg-[#0847F7]/15 text-[#8AA6F9]" },
+};
+
 const WORKFLOWS = [
   {
     id: "wf-001-prior-auth-decision",
     name: "WF-001: Prior Auth Decision",
     description:
-      "Full prior auth flow — 10 steps: policy lookup, consent/policy on-chain checks, encrypted proof evaluation, 5 EVM writes (submit, proof, schedule, release, markPaid), encrypted callback.",
-    trigger: "HTTP",
+      "Full prior auth flow — 10 steps: EHR fetch, consent/policy checks, encrypted proof evaluation, 5 EVM writes (submit, proof, schedule, release, markPaid), encrypted callback.",
+    trigger: "cron",
   },
   {
     id: "wf-002-consent-revocation",
     name: "WF-002: Consent Revocation",
     description:
       "Revokes consent on-chain and flags any pending claims for review.",
-    trigger: "HTTP",
+    trigger: "cron",
   },
   {
     id: "wf-003-challenge-resolution",
     name: "WF-003: Challenge Resolution",
     description:
-      "Challenge lifecycle — 6 steps: poll challenges, verify claim state, challengeClaim, resolveChallenge, cancelPayout, encrypted callback.",
-    trigger: "HTTP",
+      "Challenge lifecycle — poll challenges, verify claim state, challengeClaim, resolveChallenge, cancelPayout, encrypted callback.",
+    trigger: "cron",
   },
   {
     id: "wf-004-reconciliation-monitor",
     name: "WF-004: Reconciliation Monitor",
     description:
-      "Scheduled every 15 min — detects stuck PROOF_PENDING states and mismatches.",
-    trigger: "Schedule",
+      "Scheduled every 15 min — detects stuck PROOF_PENDING states and state mismatches.",
+    trigger: "cron",
   },
   {
     id: "wf-005-encrypted-credential-audit",
     name: "WF-005: Encrypted Credential Audit",
     description:
-      "AES-GCM encryption showcase — 4 encrypted HTTP calls + 1 on-chain consent check for a full credential audit cycle.",
-    trigger: "Schedule",
+      "AES-GCM encryption showcase — 5 encrypted HTTP calls + 1 on-chain consent check.",
+    trigger: "cron",
+  },
+  {
+    id: "wf-006-medication-payment-verification",
+    name: "WF-006: Medication Payment Verification",
+    description:
+      "Pharmaceutical benefit check — formulary coverage + medication amount cap (8 predicates).",
+    trigger: "cron",
+  },
+  {
+    id: "wf-007-claim-transfer-settlement",
+    name: "WF-007: Claim Transfer Settlement",
+    description:
+      "Event-driven transfer settlement — fires on ClaimSubmitted event via EVMClient.logTrigger(). No polling.",
+    trigger: "log",
+  },
+  {
+    id: "wf-008-http-prior-auth",
+    name: "WF-008: HTTP Prior Auth",
+    description:
+      "On-demand prior auth via signed HTTP request — fires immediately with full payload. No EHR fetch needed.",
+    trigger: "http",
   },
 ];
 
@@ -85,8 +112,8 @@ export default function SimulatePage() {
           >
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">{wf.name}</h3>
-              <span className="rounded-full bg-[var(--bg)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
-                {wf.trigger}
+              <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${TRIGGER_STYLES[wf.trigger]?.className ?? ""}`}>
+                {TRIGGER_STYLES[wf.trigger]?.label ?? wf.trigger}
               </span>
             </div>
             <p className="mt-2 text-sm text-[var(--text-muted)]">

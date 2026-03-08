@@ -1,6 +1,14 @@
 "use client";
 
-import { CLAIM_STATES } from "@/config/contracts";
+import { useQuery } from "@tanstack/react-query";
+import { createPublicClient, http } from "viem";
+import { foundry } from "viem/chains";
+import { CONTRACTS, claimDecisionRegistryAbi, CLAIM_STATES } from "@/config/contracts";
+
+const client = createPublicClient({
+  chain: foundry,
+  transport: http("http://127.0.0.1:8545"),
+});
 
 const NODES = [
   { state: "NONE", x: 50, y: 50, label: "NONE" },
@@ -37,11 +45,27 @@ export function getNodeColor(
 }
 
 interface StateMachineProps {
-  currentState?: number | null;
+  claimId?: `0x${string}` | null;
 }
 
-export function StateMachine({ currentState }: StateMachineProps) {
-  const activeStateName = currentState != null ? CLAIM_STATES[currentState] ?? null : null;
+export function StateMachine({ claimId }: StateMachineProps) {
+  const { data: decision } = useQuery({
+    queryKey: ["sm-decision", claimId],
+    queryFn: async () => {
+      if (!claimId) return null;
+      return client.readContract({
+        address: CONTRACTS.ClaimDecisionRegistry as `0x${string}`,
+        abi: claimDecisionRegistryAbi,
+        functionName: "getDecision",
+        args: [claimId],
+      });
+    },
+    enabled: !!claimId,
+    refetchInterval: 2_000,
+  });
+
+  const stateIndex = decision ? Number(decision.state) : 0;
+  const activeStateName = claimId ? (CLAIM_STATES[stateIndex] ?? null) : null;
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4">

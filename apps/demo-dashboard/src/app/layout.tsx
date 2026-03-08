@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Providers } from "./providers";
 import Link from "next/link";
+import Image from "next/image";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ProofPA Demo Dashboard",
+  title: "EASE eHealth Demo Dashboard",
   description:
-    "Interactive demo dashboard for ProofPA — privacy-preserving prior authorization",
+    "Interactive demo dashboard for EASE eHealth — privacy-preserving prior authorization",
 };
 
 function Nav() {
@@ -14,11 +15,15 @@ function Nav() {
     <header className="border-b border-[var(--border)] bg-[var(--bg-card)]">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
         <Link href="/" className="flex items-center gap-3 hover:opacity-80">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
-            PA
-          </div>
-          <span className="text-lg font-semibold">ProofPA</span>
-          <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-xs text-[var(--accent)]">
+          <Image
+            src="/logo.png"
+            alt="EASE eHealth"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
+          <span className="text-lg font-semibold">EASE eHealth</span>
+          <span className="rounded-full bg-[#0847F7]/10 px-2 py-0.5 text-xs font-medium text-[#8AA6F9]">
             Demo
           </span>
         </Link>

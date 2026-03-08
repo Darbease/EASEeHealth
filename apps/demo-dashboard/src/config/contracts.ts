@@ -135,4 +135,6 @@ export const DENIAL_BITS = [
   { bit: 3, mask: 8, label: "Consent invalid/revoked" },
   { bit: 4, mask: 16, label: "Duplicate/nullifier collision" },
   { bit: 5, mask: 32, label: "Stale attestation" },
+  { bit: 6, mask: 64, label: "Medication not on formulary" },
+  { bit: 7, mask: 128, label: "Medication amount exceeds cap" },
 ] as const;
