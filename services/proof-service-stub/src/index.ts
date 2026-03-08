@@ -17,6 +17,8 @@ const ProofRequestSchema = z.object({
   policy_hash: Bytes32,
   procedure_code: z.string().optional(),
   requested_amount: z.string().optional(),
+  medication_code: z.string().optional(),
+  medication_amount: z.string().optional(),
   consent_active: z.boolean().optional(),
   credential_valid: z.boolean().optional(),
   is_duplicate: z.boolean().optional(),
@@ -25,6 +27,10 @@ const ProofRequestSchema = z.object({
     covered_procedures: z.array(z.string()).optional(),
     amount_caps: z.record(z.string(), z.number()).optional(),
     attestation_max_age_seconds: z.number().optional(),
+    formulary: z.object({
+      covered_medications: z.array(z.string()).optional(),
+      medication_caps: z.record(z.string(), z.number()).optional(),
+    }).optional(),
   }).optional(),
 })
 
@@ -42,6 +48,7 @@ app.post("/v1/proofs/medical-necessity", (req, res) => {
   const caps = data.policy_predicates?.amount_caps ?? { PROC_KNEE_MRI: 100000 }
   const capForProc = caps[procCode] ?? 0
 
+  const formulary = data.policy_predicates?.formulary
   const evalResult = evaluatePredicates({
     credential_valid: data.credential_valid ?? true,
     procedure_code: procCode,
@@ -52,6 +59,10 @@ app.post("/v1/proofs/medical-necessity", (req, res) => {
     is_duplicate: data.is_duplicate ?? false,
     attestation_age_seconds: data.attestation_age_seconds ?? 3600,
     attestation_max_age_seconds: data.policy_predicates?.attestation_max_age_seconds ?? 86400,
+    medication_code: data.medication_code ?? undefined,
+    medication_amount: data.medication_amount ? parseInt(data.medication_amount) : undefined,
+    covered_medications: formulary?.covered_medications ?? undefined,
+    medication_caps: formulary?.medication_caps ?? undefined,
   })
 
   const proof_id = `proof_${randomUUID().replace(/-/g, "")}`
@@ -63,7 +74,9 @@ app.post("/v1/proofs/medical-necessity", (req, res) => {
   )
 
   const bitmap = evalResult.reason_bitmap
-  const passCount = 6 - CLINICAL.decodeBitmap(bitmap).length
+  const hasMedChecks = !!data.medication_code
+  const totalChecks = hasMedChecks ? 8 : 6
+  const passCount = totalChecks - CLINICAL.decodeBitmap(bitmap).length
   const attestAge = data.attestation_age_seconds ?? 3600
   const attestMax = data.policy_predicates?.attestation_max_age_seconds ?? 86400
 
@@ -76,14 +89,24 @@ app.post("/v1/proofs/medical-necessity", (req, res) => {
     { check: "Attestation freshness", status: (bitmap & 32) ? "FAIL" : "PASS", detail: (bitmap & 32) ? `Attestation age ${Math.floor(attestAge / 3600)}h exceeds ${Math.floor(attestMax / 3600)}h window` : `Attestation age ${Math.floor(attestAge / 3600)}h within ${Math.floor(attestMax / 3600)}h window` },
   ]
 
+  if (hasMedChecks) {
+    const medCode = data.medication_code!
+    const medAmt = data.medication_amount ? parseInt(data.medication_amount) : 0
+    const medCap = formulary?.medication_caps?.[medCode] ?? 0
+    predicateChecks.push(
+      { check: "Medication formulary", status: (bitmap & 64) ? "FAIL" : "PASS", detail: (bitmap & 64) ? `RxNorm ${medCode} not on formulary` : `RxNorm ${medCode} covered on formulary` },
+      { check: "Medication amount cap", status: (bitmap & 128) ? "FAIL" : "PASS", detail: (bitmap & 128) ? `${CLINICAL.formatAmount(medAmt)} exceeds ${CLINICAL.formatAmount(medCap)} medication cap` : `${CLINICAL.formatAmount(medAmt)} within ${CLINICAL.formatAmount(medCap)} medication cap` },
+    )
+  }
+
   logger.info({
     correlation_id: req.correlationId,
     claim_id: data.claim_id,
     result: evalResult.result,
     reason_bitmap: evalResult.reason_bitmap,
   }, proc
-    ? `Proof evaluation: ${proc.description} (CPT ${proc.cpt}) — ${evalResult.result} (${passCount}/6 predicates passed)`
-    : `Proof evaluation complete: ${evalResult.result} (${passCount}/6 predicates passed)`
+    ? `Proof evaluation: ${proc.description} (CPT ${proc.cpt}) — ${evalResult.result} (${passCount}/${totalChecks} predicates passed)`
+    : `Proof evaluation complete: ${evalResult.result} (${passCount}/${totalChecks} predicates passed)`
   )
 
   res.json({
@@ -95,7 +118,7 @@ app.post("/v1/proofs/medical-necessity", (req, res) => {
     clinical_context: {
       predicate_checks: predicateChecks,
       checks_passed: passCount,
-      checks_total: 6,
+      checks_total: totalChecks,
       denial_reasons: bitmap > 0 ? CLINICAL.decodeBitmap(bitmap) : [],
     },
   })

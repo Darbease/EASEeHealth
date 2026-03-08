@@ -1,13 +1,12 @@
 # ProofPA
 
-Privacy-preserving prior authorization and claim payout using Chainlink CRE, signed attestations, and onchain settlement - Currently Anvil Local Chain 
-TODO - connect fork eth-sepolia for contract deploy  
+Privacy-preserving prior authorization and claim payout using Chainlink CRE, signed attestations, and onchain settlement — Currently Anvil Local Chain
 
 ---
 
 ## System Architecture Overview
 
-ProofPA connects **provider portals** to **six backend services** to **five Chainlink CRE workflows** to **five Solidity contracts** on-chain. The CRE workflows are the orchestration brain — they read and write to both off-chain services (via HTTP) and on-chain contracts (via EVMClient), all executing inside a decentralized oracle network (DON). All ConfidentialHTTPClient calls use **AES-GCM output encryption** (`encryptOutput: true`) to ensure response payloads are encrypted end-to-end through the DON.
+ProofPA connects **provider portals** to **six backend services** to **eight Chainlink CRE workflows** to **five Solidity contracts** on-chain. The CRE workflows are the orchestration brain — they read and write to both off-chain services (via HTTP) and on-chain contracts (via EVMClient), all executing inside a decentralized oracle network (DON). All ConfidentialHTTPClient calls use **AES-GCM output encryption** (`encryptOutput: true`) to ensure response payloads are encrypted end-to-end through the DON.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
@@ -24,53 +23,106 @@ ProofPA connects **provider portals** to **six backend services** to **five Chai
 │  │  API  :3005      │     │  ┌─────────────────────────────────────────────────┐ │  │
 │  └──────────────────┘     │  │  WF-001  Prior Auth Decision                   │ │   │
 │                           │  │                                                 │ │  │
-│  ┌──────────────────┐     │  │  1. ──[HTTP GET]──────► Policy Service :3001    │ │   │
-│  │  Policy Service   │◄───┼──│  2. ──[EVM READ]─────► ConsentRegistry         │ │   │
-│  │  :3001            │     │  │  3. ──[EVM READ]─────► PolicyRegistry          │ │   │
-│  └──────────────────┘     │  │  4. ──[CONF HTTP]────► Proof Service :3003     │ │   │
-│                            │  │  5. ──[EVM WRITE]────► submitClaim             │ │   │
-│  ┌──────────────────┐     │  │  6. ──[EVM WRITE]────► setProofResult          │ │   │
-│  │  Proof Service    │◄───┼──│  7. ──[EVM WRITE]────► schedulePayout          │ │   │
-│  │  Stub :3003       │     │  │  8. ──[EVM WRITE]────► releasePayout           │ │   │
-│  └──────────────────┘     │  │  9. ──[EVM WRITE]────► markPaid                │ │   │
+│  ┌──────────────────┐     │  │  0. ──[CONF HTTP]────► Provider Adapter :3005  │ │   │
+│  │  Policy Service   │◄───┼──│       GET /v1/ehr/claims/outstanding            │ │   │
+│  │  :3001            │     │  │  1. ──[HTTP GET]──────► Policy Service :3001    │ │   │
+│  └──────────────────┘     │  │  2. ──[EVM READ]─────► ConsentRegistry         │ │   │
+│                            │  │  3. ──[EVM READ]─────► PolicyRegistry          │ │   │
+│  ┌──────────────────┐     │  │  4. ──[CONF HTTP]────► Proof Service :3003     │ │   │
+│  │  Proof Service    │◄───┼──│  5. ──[EVM WRITE]────► submitClaim             │ │   │
+│  │  Stub :3003       │     │  │  6. ──[EVM WRITE]────► setProofResult          │ │   │
+│  └──────────────────┘     │  │  7. ──[EVM WRITE]────► schedulePayout          │ │   │
+│                            │  │  8. ──[EVM WRITE]────► releasePayout           │ │   │
+│                            │  │  9. ──[EVM WRITE]────► markPaid                │ │   │
 │                            │  │ 10. ──[CONF HTTP]────► Callback Service :3006  │ │   │
 │                            │  └─────────────────────────────────────────────────┘ │   │
 │                            │                                                      │   │
 │  ┌──────────────────┐     │  ┌─────────────────────────────────────────────────┐ │   │
-│  │  Consent Service  │◄───┼──│  WF-002  Consent Revocation                    │ │   │
+│  │  Consent Service  │◄───┼──│  WF-002  Consent Revocation       [HTTP TRIG]  │ │   │
 │  │  :3004            │     │  │                                                 │ │   │
-│  └──────────────────┘     │  │  1. ──[CONF HTTP]────► Consent Service :3004   │ │   │
-│                            │  │  2. ──[EVM READ]─────► ConsentRegistry         │ │   │
-│  ┌──────────────────┐     │  │  3. ──[EVM WRITE]────► revokeConsent (if active)│ │   │
-│  │  Credential Svc   │     │  │  4. ──[CONF HTTP]────► Callback Service :3006  │ │   │
-│  │  :3002            │     │  └─────────────────────────────────────────────────┘ │   │
-│  └──────────────────┘     │                                                      │   │
+│  └──────────────────┘     │  │  TRIGGER: Signed HTTP request from patient      │ │   │
+│                            │  │  0. ──[DECODE]────────► Parse HTTP payload      │ │   │
+│  ┌──────────────────┐     │  │  1. ──[CONF HTTP]────► Consent Service :3004   │ │   │
+│  │  Credential Svc   │     │  │  2. ──[EVM READ]─────► ConsentRegistry         │ │   │
+│  │  :3002            │     │  │  3. ──[EVM WRITE]────► revokeConsent           │ │   │
+│  └──────────────────┘     │  │  4. ──[EVM READ]─────► getDecision (cascade)   │ │   │
+│                            │  │  5. ──[EVM WRITE]────► challengeClaim          │ │   │
+│                            │  │  6. ──[EVM WRITE]────► cancelPayout            │ │   │
+│                            │  │  7. ──[CONF HTTP]────► Callback Service :3006  │ │   │
+│                            │  └─────────────────────────────────────────────────┘ │   │
 │                            │  ┌─────────────────────────────────────────────────┐ │   │
-│                            │  │  WF-003  Challenge Resolution                  │ │   │
+│                            │  │  WF-003  Challenge Resolution      [LOG TRIG]  │ │   │
 │  ┌──────────────────┐     │  │                                                 │ │   │
-│  │  Decision Callback│◄───┼──│  1. ──[CONF HTTP]────► Callback Service :3006  │ │   │
-│  │  Service :3006    │     │  │  2. ──[EVM READ]─────► ClaimDecisionRegistry   │ │   │
-│  └──────────────────┘     │  │  3. ──[EVM WRITE]────► challengeClaim          │ │   │
-│                            │  │  4. ──[EVM WRITE]────► resolveChallenge        │ │   │
-│                            │  │  5. ──[EVM WRITE]────► cancelPayout (if denied)│ │   │
+│  │  Decision Callback│◄───┼──│  TRIGGER: ProofEvaluated event on-chain         │ │   │
+│  │  Service :3006    │     │  │  0. ──[DECODE]────────► Parse log data          │ │   │
+│  └──────────────────┘     │  │  1. ──[EVM READ]─────► getDecision              │ │   │
+│                            │  │  2. ──[EVM READ]─────► isConsentActive          │ │   │
+│                            │  │  3. ──[HTTP GET]──────► Policy Service :3001    │ │   │
+│                            │  │  4. ──[CONF HTTP]────► Proof Service :3003     │ │   │
+│                            │  │  5. ──[EVM WRITE]────► challengeClaim (if risk) │ │   │
 │                            │  │  6. ──[CONF HTTP]────► Callback Service :3006  │ │   │
 │                            │  └─────────────────────────────────────────────────┘ │   │
 │                            │                                                      │   │
 │                            │  ┌─────────────────────────────────────────────────┐ │   │
 │                            │  │  WF-004  Reconciliation Monitor                │ │   │
-│                            │  │                                                 │ │   │
-│                            │  │  1. ──[EVM READ]─────► ClaimDecisionRegistry   │ │   │
-│                            │  │  2. ──[EVM READ]─────► ClaimEscrow             │ │   │
+│  ┌──────────────────┐     │  │                                                 │ │   │
+│  │  Synthea EHR Data │◄───┼──│  1. ──[CONF HTTP]────► Provider Adapter :3005  │ │   │
+│  │  (data/synthea/)  │     │  │       GET /v1/ehr/claims?status=BILLED         │ │   │
+│  └──────────────────┘     │  │  2. ──[EVM READ]─────► ClaimDecisionRegistry   │ │   │
+│                            │  │  3. ──[EVM READ]─────► ClaimEscrow             │ │   │
+│                            │  │  4.   Cross-check off-chain vs on-chain state  │ │   │
 │                            │  └─────────────────────────────────────────────────┘ │   │
 │                            │                                                      │   │
 │                            │  ┌─────────────────────────────────────────────────┐ │   │
 │                            │  │  WF-005  Encrypted Credential Audit  [AES-GCM] │ │   │
 │                            │  │                                                 │ │   │
+│                            │  │  0. ──[ENC HTTP]─────► Credential Svc :3002    │ │   │
+│                            │  │       GET /v1/registry/providers (w/ org name) │ │   │
 │                            │  │  1. ──[ENC HTTP]─────► Credential Svc :3002    │ │   │
 │                            │  │  2. ──[EVM READ]─────► ConsentRegistry         │ │   │
 │                            │  │  3. ──[ENC HTTP]─────► Policy Service :3001    │ │   │
 │                            │  │  4. ──[ENC HTTP]─────► Proof Service :3003     │ │   │
 │                            │  │  5. ──[ENC HTTP]─────► Callback Service :3006  │ │   │
+│                            │  └─────────────────────────────────────────────────┘ │   │
+│                            │                                                      │   │
+│                            │  ┌─────────────────────────────────────────────────┐ │   │
+│                            │  │  WF-006  Medication Payment Verification       │ │   │
+│                            │  │                                                 │ │   │
+│                            │  │  0. ──[CONF HTTP]────► Provider Adapter :3005  │ │   │
+│                            │  │       GET /v1/ehr/medications/pending-auth      │ │   │
+│                            │  │  1. ──[HTTP GET]──────► Policy Service :3001    │ │   │
+│                            │  │  2. ──[EVM READ]─────► ConsentRegistry         │ │   │
+│                            │  │  3. ──[EVM READ]─────► PolicyRegistry          │ │   │
+│                            │  │  4. ──[CONF HTTP]────► Proof Service :3003     │ │   │
+│                            │  │  5-9 ─[EVM WRITE]────► submit+approve+payout   │ │   │
+│                            │  │ 10. ──[CONF HTTP]────► Callback Service :3006  │ │   │
+│                            │  └─────────────────────────────────────────────────┘ │   │
+│                            │                                                      │   │
+│                            │  ┌─────────────────────────────────────────────────┐ │   │
+│                            │  │  WF-007  Claim Transfer Settlement  [LOG TRIG] │ │   │
+│                            │  │                                                 │ │   │
+│                            │  │  TRIGGER: ClaimSubmitted event on-chain         │ │   │
+│                            │  │  0. ──[CONF HTTP]────► Provider Adapter :3005  │ │   │
+│                            │  │       GET /v1/ehr/claims/transfers/pending      │ │   │
+│                            │  │  1. ──[HTTP GET]──────► Policy Service :3001    │ │   │
+│                            │  │  2. ──[EVM READ]─────► ConsentRegistry         │ │   │
+│                            │  │  3. ──[EVM READ]─────► PolicyRegistry          │ │   │
+│                            │  │  4. ──[CONF HTTP]────► Proof Service :3003     │ │   │
+│                            │  │  5-8 ─[EVM WRITE]────► approve+payout+markPaid │ │   │
+│                            │  │  9. ──[CONF HTTP]────► Callback Service :3006  │ │   │
+│                            │  └─────────────────────────────────────────────────┘ │   │
+│                            │                                                      │   │
+│                            │  ┌─────────────────────────────────────────────────┐ │   │
+│                            │  │  WF-008  HTTP Prior Auth           [HTTP TRIG] │ │   │
+│                            │  │                                                 │ │   │
+│                            │  │  TRIGGER: Signed HTTP request from provider     │ │   │
+│                            │  │  0. ──[DECODE]────────► Parse HTTP payload      │ │   │
+│                            │  │  1. ──[EVM READ]─────► ConsentRegistry         │ │   │
+│                            │  │  2. ──[EVM READ]─────► PolicyRegistry          │ │   │
+│                            │  │  3. ──[HTTP GET]──────► Policy Service :3001    │ │   │
+│                            │  │  4. ──[CONF HTTP]────► Proof Service :3003     │ │   │
+│                            │  │  5-9 ─[EVM WRITE]────► submit+approve+payout   │ │   │
+│                            │  │ 10. ──[CONF HTTP]────► Callback Service :3006  │ │   │
 │                            │  └─────────────────────────────────────────────────┘ │   │
 │                            └──────────────────────────────────────────────────────┘   │
 │                                           │                                          │
@@ -97,9 +149,12 @@ The CRE workflows use **all three Chainlink CRE capability types** in a single p
 
 | Capability | SDK Class | What It Does | Used By |
 |---|---|---|---|
-| **Regular HTTP** | `HTTPClient` | Public API calls with DON consensus (all nodes must agree on the response) | WF-001 |
-| **Confidential HTTP** | `ConfidentialHTTPClient` | API calls with encrypted secrets injected inside the TEE enclave (API keys, tokens). All calls use `encryptOutput: true` for AES-GCM encrypted responses. | WF-001, WF-002, WF-003, WF-005 |
-| **EVM Read/Write** | `EVMClient` | On-chain contract reads via `callContract()` and DON-signed transaction writes via `writeReport()` | WF-001, WF-002, WF-003, WF-004, WF-005 |
+| **Cron Trigger** | `CronCapability` | Time-driven polling on a schedule (every 30s) | WF-001, WF-004, WF-005, WF-006 |
+| **HTTP Trigger** | `HTTPCapability` | Request-driven — fires immediately on signed HTTP request | WF-002, WF-008 |
+| **Log Trigger** | `EVMClient.logTrigger()` | Event-driven — fires when specific on-chain event is emitted | WF-003, WF-007 |
+| **Regular HTTP** | `HTTPClient` | Public API calls with DON consensus (all nodes must agree) | WF-001, WF-003, WF-006, WF-007, WF-008 |
+| **Confidential HTTP** | `ConfidentialHTTPClient` | Encrypted API calls with secrets injected inside TEE enclave. All use `encryptOutput: true` (AES-GCM). | All workflows |
+| **EVM Read/Write** | `EVMClient` | On-chain reads via `callContract()` and DON-signed writes via `writeReport()` | All workflows |
 
 ---
 
@@ -122,6 +177,26 @@ WF-001: Prior Auth Decision — Step-by-Step Data Flow
 TRIGGER: CronCapability fires every 30 seconds
          (in production: triggered by provider-adapter-api submission)
 
+ Step 0 ── [ConfidentialHTTPClient + AES-GCM Encryption] ─────────────────────
+ │
+ │  GET http://localhost:3005/v1/ehr/claims/outstanding
+ │
+ │  Fetches outstanding BILLED claims from the EHR (Synthea data) to populate
+ │  the prior-auth request with real clinical data instead of fixtures.
+ │  encryptOutput: true → patient data encrypted through DON.
+ │
+ │  ◄── Returns: {
+ │        outstanding_claims: [{
+ │          patient_name: "Maria Garcia",
+ │          procedures: [{ description: "Coronary artery stent...", cost: "38586.73" }],
+ │          total_claim_cost: "$48,500.42"
+ │        }]
+ │      }
+ │
+ │  Extracted: patientDisplay, procedureDisplay, requestedAmount
+ │  Falls back to demo fixtures if EHR unreachable.
+ │
+ ▼
  Step 1 ── [HTTPClient with DON Consensus] ─────────────────────────────────
  │
  │  GET http://localhost:3001/v1/policies/payer-demo-001/v1
@@ -296,189 +371,177 @@ TRIGGER: CronCapability fires every 30 seconds
 
 ---
 
-## WF-002: Consent Revocation
+## WF-002: Consent Revocation (HTTP Trigger — Consent Cascade)
 
 **User Stories:**
 
-> **As a patient**, I want to withdraw my data-sharing consent at any time and have all pending prior auth claims immediately flagged for re-evaluation, so that my right to revoke authorization is enforced in real time — not days later.
+> **As a patient**, I want to withdraw my data-sharing consent via my portal and have the revocation take effect immediately — revoking on-chain, challenging any approved claims, and cancelling scheduled payouts — so that my right to revoke is enforced in real time.
 
-> **As a compliance officer**, I want the system to cross-check off-chain revocation events against the on-chain ConsentRegistry, so that I can detect discrepancies between what the consent service reports and what the blockchain reflects.
+> **As a compliance officer**, I want consent revocations to trigger a cross-contract cascade that automatically protects the payer from paying out on claims where consent no longer exists.
 
-> **As a provider**, I want to be notified automatically when a patient's consent revocation affects my pending claims, so that I can take action (resubmit with new consent or cancel the procedure) without manual follow-up.
+> **As a provider**, I want to be notified automatically when a patient's consent revocation affects my pending claims, so that I can take action without manual follow-up.
 
-When a patient revokes consent, this workflow polls for the revocation event, verifies on-chain state, writes the revocation on-chain if still ACTIVE, and flags affected claims.
+Patient-initiated consent cascade: the patient portal sends a signed revocation request to the CRE gateway via HTTPCapability. The workflow fires immediately, revokes consent on-chain, then cascades across all affected claims — challenging approved claims and cancelling scheduled payouts. Cross-contract fan-out across ConsentRegistry + ClaimDecisionRegistry + ClaimEscrow.
 
 ```
-WF-002: Consent Revocation — Data Flow
-═══════════════════════════════════════
+WF-002: Consent Revocation — Data Flow (HTTP Trigger)
+═════════════════════════════════════════════════════
 
-TRIGGER: CronCapability fires every 30 seconds
+TRIGGER: HTTPCapability — signed HTTP request from patient portal
 
- Step 1 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────────
+ Step 0 ── [DECODE PAYLOAD] ─────────────────────────────────────────────
+ │
+ │  Parse payload.input bytes → JSON
+ │  Extract: consent_id, reason_code, affected_claim_id
+ │
+ ▼
+ Step 1 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────
  │
  │  GET http://localhost:3004/v1/consents/revocations?since=900
  │
- │  Polls for any consents revoked in the last 15 minutes.
- │
- │  ◄── Returns: {
- │        revocations: [{
- │          consent_id: "0xd4d4...d4",
- │          revoked_at: "2026-03-05T09:04:04.716Z",
- │          reason_code: 1
- │        }],
- │        count: 1
- │      }
+ │  Validates revocation request against consent-service records.
  │
  ▼
- Step 2 ── [EVMClient.callContract — READ] ──────────────────────────────────
+ Step 2 ── [EVMClient.callContract — READ] ──────────────────────────────
  │
- │  Contract: ConsentRegistry (0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512)
- │  Function: isConsentActive(bytes32 consentId, uint64 atTs) → bool
+ │  Contract: ConsentRegistry
+ │  Function: isConsentActive(consentId, atTs) → bool
  │
- │  Cross-checks: does the off-chain revocation match the on-chain state?
- │  If consent-service says "revoked" but chain says "active", that's a
- │  discrepancy that needs investigation.
- │
- │  ◄── Returns: true  (chain still shows ACTIVE — needs revocation write)
- │               false (confirms revocation is already reflected on-chain)
+ │  Verify consent is currently ACTIVE on-chain before revoking.
  │
  ▼
- Step 3 ── [EVMClient.writeReport — WRITE] (only if consent still ACTIVE) ──
+ Step 3 ── [EVMClient.writeReport — WRITE] (only if ACTIVE) ────────────
  │
- │  Contract: ConsentRegistry (0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512)
- │  Function: revokeConsent(bytes32 consentId, uint16 reasonCode)
- │  Args:     consentId = 0xc0c0...c0, reasonCode = 1 (patient-initiated)
+ │  Contract: ConsentRegistry
+ │  Function: revokeConsent(consentId, reasonCode)
  │
- │  If the consent service reports a revocation but the chain still shows
- │  ACTIVE, the workflow writes the revocation on-chain to synchronize state.
- │  If already REVOKED on-chain, this step is skipped.
- │
- │  On-chain effect: Consent status transitions ACTIVE → REVOKED
+ │  On-chain effect: ACTIVE → REVOKED
  │  Emits: ConsentRevoked(consentId, reasonCode)
  │
  ▼
- Step 4 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────────
+ Step 4 ── [EVMClient.callContract — READ] ──────────────────────────────
  │
- │  POST http://localhost:3006/v1/callbacks/consent-revoked
- │  Body: {
- │    workflow_id: "WF-002",
- │    revocations: "<raw consent service response>",
- │    onchain_consent_active: <true|false>,
- │    timestamp: "2026-03-05T09:09:04.738Z"
- │  }
+ │  Contract: ClaimDecisionRegistry
+ │  Function: getDecision(affectedClaimId) → ClaimDecision
  │
- │  The callback service logs the event and would flag any pending claims
- │  associated with the revoked consent for denial or cancellation.
- │
- │  ◄── Returns: { status: "received", flagged_claims: 0 }
+ │  CASCADE: Check affected claim state. If APPROVED, must block payout.
  │
  ▼
- RESULT: { workflow: "WF-002-ConsentRevocation", status: "COMPLETED",
-           onchain_consent_active: false, revoked_onchain: true }
+ Step 5 ── [EVMClient.writeReport — WRITE] (only if APPROVED) ──────────
+ │
+ │  Contract: ClaimDecisionRegistry
+ │  Function: challengeClaim(affectedClaimId, "consent-revoked")
+ │
+ │  On-chain effect: APPROVED → CHALLENGED
+ │  Payout is now BLOCKED.
+ │
+ ▼
+ Step 6 ── [EVMClient.writeReport — WRITE] (only if challenged) ────────
+ │
+ │  Contract: ClaimEscrow
+ │  Function: cancelPayout(affectedClaimId)
+ │
+ │  On-chain effect: SCHEDULED → CANCELLED
+ │  Funds returned to escrow pool.
+ │
+ ▼
+ Step 7 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────
+ │
+ │  POST http://localhost:3006/v1/callbacks/consent-revoked
+ │  Body: { consent_id, revoked_onchain, affected_claim_state,
+ │          challenged_onchain, timestamp }
+ │
+ ▼
+ RESULT: { workflow: "WF-002-ConsentRevocation", trigger_type: "http",
+           revoked_onchain: true, challenged_onchain: true }
 ```
 
 ---
 
-## WF-003: Challenge Resolution
+## WF-003: Challenge Resolution (Log Trigger — Automated Compliance Gate)
 
 **User Stories:**
 
-> **As an ops reviewer**, I want to challenge an approved claim that looks suspicious (e.g., amount exceeds the usual range for a procedure) and have the payout automatically blocked until I complete my review, so that fraudulent or erroneous payouts are caught before funds leave escrow.
+> **As a compliance officer**, I want every approved claim to be automatically re-evaluated against current policy predicates and consent status, so that the system acts as an autonomous on-chain compliance gate.
 
-> **As a provider**, I want to know when one of my approved claims is under challenge and receive a notification when the challenge is resolved, so that I'm not left wondering why a payout is delayed.
+> **As an auditor**, I want claims that exceed amount caps or have revoked consent to be automatically challenged within seconds of approval, rather than discovered days later during manual review.
 
-> **As an auditor**, I want the on-chain claim state to accurately reflect whether a claim is under active challenge, so that the blockchain serves as a tamper-proof audit trail of every dispute.
+> **As a payer**, I want the CRE network to reactively monitor on-chain approval events and auto-challenge risky claims, so that no fraudulent payout can slip through the window between approval and settlement.
 
-When an approved claim is challenged (e.g., by an ops reviewer who spots unusual amounts), this workflow writes the challenge on-chain, resolves it, cancels the payout if denied, and notifies the provider.
+Automated compliance gate: fires on `ProofEvaluated(bytes32 indexed claimId, bytes32 proofHash, bool approved, uint256 reasonBitmap)` events emitted by ClaimDecisionRegistry. When a claim is approved, WF-003 runs risk analysis — re-evaluates against policy predicates, verifies consent is still active — and auto-challenges if risk is detected.
 
 ```
-WF-003: Challenge Resolution — Data Flow
-═════════════════════════════════════════
+WF-003: Challenge Resolution — Data Flow (Log Trigger)
+══════════════════════════════════════════════════════
 
-TRIGGER: CronCapability fires every 30 seconds
+TRIGGER: EVMClient.logTrigger() on ProofEvaluated event
+         topic0 = 0xfeae156cecc52d91998049b161ea0e9f9b90abfb795577187403978249a2dc10
 
- Step 1 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────────
+ Step 0 ── [DECODE LOG] ─────────────────────────────────────────────────
  │
- │  GET http://localhost:3006/v1/callbacks/pending-challenges
+ │  Parse EVMLog topics and data:
+ │    topic[1] = claimId (indexed bytes32)
+ │    data = proofHash, approved (bool), reasonBitmap (uint256)
  │
- │  ◄── Returns: {
- │        challenges: [{
- │          claim_id: "0xe5e5...e5",
- │          challenged_at: "2026-03-05T08:59:10.156Z",
- │          challenger: "ops-reviewer-1",
- │          reason: "Amount exceeds usual range"
- │        }],
- │        count: 1
- │      }
+ │  Skip denied claims (approved == false) — no compliance check needed.
  │
  ▼
- Step 2 ── [EVMClient.callContract — READ] ──────────────────────────────────
+ Step 1 ── [EVMClient.callContract — READ] ──────────────────────────────
  │
- │  Contract: ClaimDecisionRegistry (0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9)
- │  Function: getDecision(bytes32 claimId) → ClaimDecision
+ │  Contract: ClaimDecisionRegistry
+ │  Function: getDecision(claimId) → ClaimDecision
  │
- │  Reads the full on-chain claim state to verify it's actually in
- │  CHALLENGED status before processing any resolution.
- │
- │  Returns a struct: { claimId, policyHash, state, proofHash,
- │                       reasonBitmap, updatedAt }
- │
- │  State values: 0=NONE, 1=SUBMITTED, 2=PROOF_PENDING,
- │                3=APPROVED, 4=DENIED, 5=CHALLENGED, 6=PAID
+ │  Verify on-chain state matches log data. Read full claim struct.
  │
  ▼
- Step 3 ── [EVMClient.writeReport — WRITE] (only if APPROVED + challenge exists)
+ Step 2 ── [EVMClient.callContract — READ] ──────────────────────────────
  │
- │  Contract: ClaimDecisionRegistry (0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9)
- │  Function: challengeClaim(bytes32 claimId, string reason)
- │  Args:     claimId = 0xe5e5...e5, reason = "clinical-review"
+ │  Contract: ConsentRegistry
+ │  Function: isConsentActive(consentId, atTs) → bool
  │
- │  On-chain effect: Claim state transitions APPROVED → CHALLENGED
- │  Emits: ClaimChallenged(claimId, reason)
- │  Payout is now BLOCKED — cannot be released while challenged.
+ │  Post-approval consent check — was consent revoked between submission
+ │  and approval?
  │
  ▼
- Step 4 ── [EVMClient.writeReport — WRITE] (only if CHALLENGED) ────────────
+ Step 3 ── [HTTPClient with DON Consensus] ──────────────────────────────
  │
- │  Contract: ClaimDecisionRegistry (0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9)
- │  Function: resolveChallenge(bytes32 claimId, bool approved)
- │  Args:     claimId = 0xe5e5...e5, approved = true|false
+ │  GET http://localhost:3001/v1/policies/payer-demo-001/v1
  │
- │  On-chain effect: CHALLENGED → APPROVED (payout unblocked)
- │                   CHALLENGED → DENIED   (payout cancelled)
- │  Emits: ChallengeResolved(claimId, approved)
+ │  Fetch policy predicates for compliance re-evaluation.
  │
  ▼
- Step 5 ── [EVMClient.writeReport — WRITE] (only if denied after challenge) ─
+ Step 4 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────
  │
- │  Contract: ClaimEscrow (0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9)
- │  Function: cancelPayout(bytes32 claimId)
- │  Args:     claimId = 0xe5e5...e5
+ │  POST http://localhost:3003/v1/proofs/medical-necessity
  │
- │  On-chain effect: Payout status transitions SCHEDULED → CANCELLED
- │  Emits: PayoutCancelled(claimId)
- │  Funds are returned to the escrow pool.
+ │  Re-evaluate claim against policy predicates with current data.
+ │  Detects if amount caps have changed, consent was revoked, etc.
+ │
+ │  Risk detection:
+ │    - Re-eval FAIL → auto-challenge
+ │    - Consent revoked → auto-challenge
+ │    - Amount exceeds cap → auto-challenge
  │
  ▼
- Step 6 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────────
+ Step 5 ── [EVMClient.writeReport — WRITE] (only if risk detected) ─────
+ │
+ │  Contract: ClaimDecisionRegistry
+ │  Function: challengeClaim(claimId, "compliance-auto-challenge")
+ │
+ │  On-chain effect: APPROVED → CHALLENGED
+ │  Payout is now BLOCKED pending manual review.
+ │
+ ▼
+ Step 6 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────
  │
  │  POST http://localhost:3006/v1/callbacks/challenge-resolved
- │  Body: {
- │    workflow_id: "WF-003",
- │    resolutions: "<raw challenge data>",
- │    onchain_claim_state: "APPROVED" | "DENIED",
- │    challenged_onchain: true,
- │    resolved_onchain: true,
- │    resolution_approved: true|false,
- │    timestamp: "2026-03-05T09:09:10.176Z"
- │  }
- │
- │  ◄── Returns: { status: "received", resolved_count: 1 }
+ │  Body: { workflow_id: "WF-003", claim_id, compliance_result,
+ │          risk_detected, challenged_onchain, timestamp }
  │
  ▼
- RESULT: { workflow: "WF-003-ChallengeResolution", status: "COMPLETED",
-           onchain_claim_state: "APPROVED", challenged_onchain: true,
-           resolved_onchain: true, resolution_approved: true }
+ RESULT: { workflow: "WF-003-ChallengeResolution", trigger_type: "log",
+           compliance_result: "PASS|FAIL", risk_detected: false,
+           challenged_onchain: false }
 ```
 
 ---
@@ -489,11 +552,13 @@ TRIGGER: CronCapability fires every 30 seconds
 
 > **As a system operator**, I want to be alerted within 15 minutes if any claim is stuck in `PROOF_PENDING` state, so that I can investigate whether the proof service is down or a workflow execution failed before it impacts SLO targets.
 
-> **As a finance team member**, I want the system to automatically detect when a claim is marked `PAID` on-chain but the escrow shows the payout was never released, so that settlement mismatches are caught before end-of-day reconciliation.
+> **As a finance team member**, I want the system to automatically cross-reference outstanding claims in our EHR/billing system against on-chain settlement state, so that I can see which claims are still waiting 30-90 days for traditional payment when they could be settled on-chain in seconds.
 
-> **As a payer**, I want an independent on-chain monitor (with no HTTP dependencies) that verifies cross-contract consistency between `ClaimDecisionRegistry` and `ClaimEscrow`, so that I can trust the settlement layer operates correctly even if off-chain services are unreachable.
+> **As a payer**, I want an independent monitor that verifies cross-contract consistency between `ClaimDecisionRegistry` and `ClaimEscrow`, and cross-references against off-chain EHR records, so that I can trust the settlement layer operates correctly and detect reconciliation gaps.
 
-A health-check workflow that reads on-chain state to detect anomalies — stuck claims, payout mismatches, or stale state transitions. This is the only workflow with **zero HTTP calls** — it's pure EVM reads.
+The reconciliation workflow fetches **outstanding BILLED claims from the EHR system** (Synthea-format data served by provider-adapter-api) via ConfidentialHTTPRequest, computes deterministic `claim_id` hashes from off-chain fields, and cross-checks each against on-chain state. This is the **key demo of ProofPA's value** — showing traditional claims stuck in BILLED status for weeks while the same claims are already settled on-chain in under 120 seconds.
+
+Falls back to legacy on-chain-only mode if the EHR is unreachable.
 
 ```
 WF-004: Reconciliation Monitor — Data Flow
@@ -501,22 +566,53 @@ WF-004: Reconciliation Monitor — Data Flow
 
 TRIGGER: CronCapability fires every 30s (staging) / 15min (production)
 
- Step 1 ── [EVMClient.callContract — READ] ──────────────────────────────────
+ Step 1 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────────
+ │
+ │  GET http://localhost:3005/v1/ehr/claims?status=BILLED
+ │
+ │  Fetches outstanding BILLED claims from the EHR system (Synthea-format
+ │  data loaded from data/synthea/claims.csv at service startup).
+ │  encryptOutput: true → response encrypted through DON.
+ │
+ │  ◄── Returns: {
+ │        claims: [
+ │          { Id: "aa1b..09", patient_name: "Maria Garcia",
+ │            provider_name: "Sarah Chen", Outstanding1: "7275.00",
+ │            procedures: [{ code: "36969009", description: "Coronary stent",
+ │                           cost: "38000.00" }] },
+ │          { Id: "aa1b..10", patient_name: "William O'Brien",
+ │            Outstanding1: "4600.00", ... }
+ │        ],
+ │        count: 2
+ │      }
+ │
+ ▼
+ Step 2 ── [For each outstanding claim] ────────────────────────────────────
+ │
+ │  Compute deterministic claim_id from off-chain fields:
+ │    claim_id = keccak256(payer_id | hash(provider_id) | hash(encounter_id)
+ │                         | diagnosis_code | service_date)
+ │
+ │  This mirrors the same keccak256 used in provider-adapter-api and WF-001,
+ │  ensuring off-chain records map to the correct on-chain claim.
+ │
+ ▼
+ Step 3 ── [EVMClient.callContract — READ] ──────────────────────────────────
  │
  │  Contract: ClaimDecisionRegistry (0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9)
  │  Function: getDecision(bytes32 claimId) → ClaimDecision
  │
- │  Reads claim state and updatedAt timestamp.
+ │  For each outstanding EHR claim, reads on-chain state:
  │
- │  Anomaly detection:
- │    - If state == PROOF_PENDING and (now - updatedAt) > sloTargetSeconds:
- │      ALERT: Claim stuck in PROOF_PENDING beyond SLO threshold.
- │      sloTargetSeconds is read from config (default: 900 = 15 min).
+ │  Cross-reference findings:
+ │    - state == NONE:  "Claim not on-chain — candidate for ProofPA submission"
+ │    - state == PAID:  "RECONCILIATION FINDING — settled on-chain but EHR
+ │                       still shows $7,275 outstanding"
+ │    - state == PROOF_PENDING, age > SLO: "SLO VIOLATION"
+ │    - state == APPROVED: check escrow status (step 4)
  │
  ▼
- Step 2 ── [EVMClient.callContract — READ] (conditional) ───────────────────
- │
- │  Only runs if claim state >= APPROVED (and not DENIED).
+ Step 4 ── [EVMClient.callContract — READ] (conditional) ───────────────────
  │
  │  Contract: ClaimEscrow (0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9)
  │  Function: getPayout(bytes32 claimId) → PayoutInstruction
@@ -525,18 +621,30 @@ TRIGGER: CronCapability fires every 30s (staging) / 15min (production)
  │  Payout status: 0=NONE, 1=SCHEDULED, 2=RELEASED, 3=CANCELLED
  │
  │  Cross-contract consistency checks:
- │    - Claim is PAID but payout is not RELEASED → MISMATCH
- │    - Claim is APPROVED but no payout scheduled → MISMATCH
+ │    - Claim PAID but payout not RELEASED → MISMATCH
+ │    - Claim APPROVED but no payout scheduled → MISMATCH
  │
  ▼
  RESULT: {
    workflow: "WF-004-ReconciliationMonitor",
-   claim_id: "0x0101...01",
-   onchain_state: "NONE",
+   timestamp: "2026-03-07T...",
+   ehr_claims_checked: 2,
+   settled_on_chain: 1,
    stuck_claims: 0,
    mismatches: 0,
-   timestamp: "2026-03-05T09:08:25.392Z"
+   findings: [
+     { ehr_claim_id: "aa1b..09", patient: "Maria Garcia",
+       status: "SETTLED_ON_CHAIN", outstanding: "7275.00",
+       recommendation: "Update EHR to reflect on-chain settlement" },
+     { ehr_claim_id: "aa1b..10", patient: "William O'Brien",
+       status: "NOT_ON_CHAIN", outstanding: "4600.00",
+       recommendation: "Submit via WF-001 for instant settlement" }
+   ]
  }
+
+ KEY DEMO INSIGHT:
+   Traditional system: Maria Garcia's $38K stent claim sits BILLED for 30-90 days.
+   ProofPA: Same claim settled on-chain in <120 seconds. WF-004 detects the gap.
 ```
 
 ---
@@ -551,7 +659,7 @@ TRIGGER: CronCapability fires every 30s (staging) / 15min (production)
 
 > **As a compliance officer**, I want an audit trail that shows exactly which checks passed or failed (credential, consent, policy, proof) with encryption metadata, so that I can demonstrate to regulators that the verification pipeline meets HIPAA transport security requirements.
 
-A dedicated workflow that showcases AES-GCM encryption as its headline feature. Makes **4 encrypted HTTP calls** chained with 1 on-chain consent verification to perform a full credential audit cycle.
+A dedicated workflow that showcases AES-GCM encryption as its headline feature. Makes **5 encrypted HTTP calls** (registry lookup + credential verify + policy fetch + proof eval + callback) chained with 1 on-chain consent verification to perform a full credential audit cycle.
 
 ```
 WF-005: Encrypted Credential Audit — Data Flow
@@ -559,11 +667,28 @@ WF-005: Encrypted Credential Audit — Data Flow
 
 TRIGGER: CronCapability fires every 30 seconds
 
+ Step 0 ── [ConfidentialHTTPClient + AES-GCM Encryption] ─────────────────────
+ │
+ │  GET http://localhost:3002/v1/registry/providers
+ │
+ │  Fetches a real provider from the Synthea registry to use a real
+ │  provider identity instead of a hardcoded fixture.
+ │  Organization name is embedded in the response (no second call needed).
+ │
+ │  ◄── Returns: { providers: [{ Name: "Sarah Chen",
+ │        Speciality: "General Surgery",
+ │        OrganizationName: "Mercy General Hospital" }] }
+ │
+ │  Extracted: providerName, providerSpecialty, providerOrgName
+ │  Falls back to demo fixture if registry unreachable.
+ │
+ ▼
  Step 1 ── [ConfidentialHTTPClient + AES-GCM Encryption] ───────────────────
  │
  │  POST http://localhost:3002/v1/credentials/verify
  │
  │  Verifies provider credentials (NPI) via encrypted enclave call.
+ │  Uses real provider name/specialty from Step 0.
  │  encryptOutput: true → response encrypted through DON.
  │
  │  ◄── Returns: credential verification result or error
@@ -613,15 +738,118 @@ TRIGGER: CronCapability fires every 30 seconds
    audit_result: "PASS|FAIL",
    encryption: {
      protocol: "AES-GCM",
-     encrypted_calls: 4,
-     total_calls: 4,
+     encrypted_calls: 5,
+     total_calls: 5,
      all_responses_encrypted: true
    },
    steps: { ... }
  }
 ```
 
-**Quota usage**: 4 HTTP calls (limit 5), 1 EVM read (limit 10) — within CRE bounds.
+**Quota usage**: 5 HTTP calls (limit 5), 1 EVM read (limit 10) — at capacity.
+
+---
+
+## WF-006: Medication Payment Verification
+
+**User Stories:**
+
+> **As a pharmacist**, I want medication prior authorizations to be evaluated against the payer's formulary coverage and amount caps, so that I know immediately whether the prescription will be covered.
+
+> **As a payer**, I want medication claims to go through the same on-chain settlement pipeline as procedure claims, proving that my contract architecture generalizes beyond surgical procedures.
+
+Extends the prior-auth model from procedures to medications. Evaluates 8 predicates including formulary coverage (denial bitmap bits 6-7) and medication amount caps.
+
+```
+WF-006: Medication Payment Verification — Data Flow
+════════════════════════════════════════════════════
+
+TRIGGER: CronCapability fires every 30 seconds
+
+ Step 0 ── [ConfidentialHTTPClient + AES-GCM] ────── GET /v1/ehr/medications/pending-auth
+ Step 1 ── [HTTPClient + DON Consensus] ──────────── GET /v1/policies/payer-demo-001/v1
+ Step 2 ── [EVMClient — READ] ────────────────────── ConsentRegistry.isConsentActive
+ Step 3 ── [EVMClient — READ] ────────────────────── PolicyRegistry.isPolicyActive
+ Step 4 ── [ConfidentialHTTPClient + AES-GCM] ────── POST /v1/proofs/medical-necessity
+ Step 5 ── [EVMClient — WRITE] ───────────────────── ClaimDecisionRegistry.submitClaim
+ Step 6 ── [EVMClient — WRITE] ───────────────────── ClaimDecisionRegistry.setProofResult
+ Step 7 ── [EVMClient — WRITE] ───────────────────── ClaimEscrow.schedulePayout
+ Step 8 ── [EVMClient — WRITE] ───────────────────── ClaimEscrow.releasePayout + markPaid
+ Step 9 ── [ConfidentialHTTPClient + AES-GCM] ────── POST /v1/callbacks/prior-auth-decision
+
+ DEMO: Maria Garcia prescribed Clopidogrel 75mg ($280) for MI
+       → BlueCross PPO formulary covers it → payer pays $238 → APPROVED → PAID
+```
+
+---
+
+## WF-007: Claim Transfer Settlement (Log Trigger — Event-Driven)
+
+**User Stories:**
+
+> **As a hospital transfer coordinator**, I want inter-department transfer claims to be automatically settled when submitted on-chain, without waiting for a cron poll cycle.
+
+> **As a CRE developer**, I want to demonstrate that workflows can react to on-chain events (logs) in addition to time-based and HTTP-based triggers.
+
+First event-driven workflow using `EVMClient.logTrigger()`. Fires when `ClaimSubmitted(bytes32 indexed claimId, bytes32 policyHash)` is emitted on-chain. Skips `submitClaim` since the claim is already SUBMITTED (that's what triggered the workflow).
+
+```
+WF-007: Claim Transfer Settlement — Data Flow (Log Trigger)
+═══════════════════════════════════════════════════════════
+
+TRIGGER: EVMClient.logTrigger() on ClaimSubmitted event
+
+ Step 0 ── [ConfidentialHTTPClient + AES-GCM] ────── GET /v1/ehr/claims/transfers/pending
+ Step 1 ── [HTTPClient + DON Consensus] ──────────── GET /v1/policies/payer-demo-001/v1
+ Step 2 ── [EVMClient — READ] ────────────────────── ConsentRegistry.isConsentActive
+ Step 3 ── [EVMClient — READ] ────────────────────── PolicyRegistry.isPolicyActive
+ Step 4 ── [ConfidentialHTTPClient + AES-GCM] ────── POST /v1/proofs/medical-necessity
+ Step 5 ── [EVMClient — WRITE] ───────────────────── ClaimDecisionRegistry.setProofResult
+           (No submitClaim — claim already SUBMITTED from the triggering tx)
+ Step 6 ── [EVMClient — WRITE] ───────────────────── ClaimEscrow.schedulePayout
+ Step 7 ── [EVMClient — WRITE] ───────────────────── ClaimEscrow.releasePayout + markPaid
+ Step 8 ── [ConfidentialHTTPClient + AES-GCM] ────── POST /v1/callbacks/prior-auth-decision
+
+ DEMO: cast send submitClaim(0x07..07, 0xa1..a1) → ClaimSubmitted event
+       → WF-007 fires → consent + policy verified → proof passes
+       → payer coverage ($32,300) paid → APPROVED → PAID
+```
+
+---
+
+## WF-008: HTTP Prior Auth (HTTP Trigger — Request-Driven)
+
+**User Stories:**
+
+> **As a provider**, I want my prior authorization to be processed immediately when I submit it, not 30 seconds later on the next cron tick.
+
+> **As a CRE developer**, I want to demonstrate that the same prior-auth pipeline can be triggered by a signed HTTP request instead of cron polling, eliminating latency and saving one ConfidentialHTTP call (no EHR fetch needed — data comes from the payload).
+
+Completes the three-trigger architecture. Provider-adapter-api signs a request and sends it directly to the CRE gateway — the workflow fires immediately with the full submission payload. All claim data comes from the HTTP payload, saving 1 ConfidentialHTTP call vs WF-001.
+
+```
+WF-008: HTTP Prior Auth — Data Flow (HTTP Trigger)
+══════════════════════════════════════════════════
+
+TRIGGER: HTTPCapability — signed HTTP request from provider-adapter-api
+
+ Step 0  ── [DECODE PAYLOAD] ──────────────────────── Parse HTTP payload bytes → JSON
+            Extract: claim_id, payer_id, procedure_code, requested_amount,
+                     consent_id, policy_hash, service_date
+ Step 1  ── [EVMClient — READ] ────────────────────── ConsentRegistry.isConsentActive
+ Step 2  ── [EVMClient — READ] ────────────────────── PolicyRegistry.isPolicyActive
+ Step 3  ── [HTTPClient + DON Consensus] ──────────── GET /v1/policies/payer-demo-001/v1
+ Step 4  ── [ConfidentialHTTPClient + AES-GCM] ────── POST /v1/proofs/medical-necessity
+ Step 5  ── [EVMClient — WRITE] ───────────────────── ClaimDecisionRegistry.submitClaim
+ Step 6  ── [EVMClient — WRITE] ───────────────────── ClaimDecisionRegistry.setProofResult
+ Step 7  ── [EVMClient — WRITE] ───────────────────── ClaimEscrow.schedulePayout
+ Step 8  ── [EVMClient — WRITE] ───────────────────── ClaimEscrow.releasePayout + markPaid
+ Step 9  ── [ConfidentialHTTPClient + AES-GCM] ────── POST /v1/callbacks/prior-auth-decision
+
+ DEMO: Provider submits prior auth via HTTP trigger → WF-008 fires immediately
+       → consent + policy verified → proof passes → claim submitted + approved
+       → payer coverage ($38,000) paid → APPROVED → PAID
+```
 
 ---
 
@@ -638,6 +866,10 @@ Every arrow in the system — who calls whom, with what, and why:
 │                                                                              │
 │  Provider Portal  ──►  Provider Adapter      POST /v1/prior-auth/submit     │
 │                        (:3005)               → claim_id, workflow_id         │
+│                                                                              │
+│  WF-001           ──►  Provider Adapter       GET /v1/ehr/claims/outstanding │
+│                        (:3005)               → patient, procedure, cost     │
+│                                               [ENC] ConfidentialHTTPClient │
 │                                                                              │
 │  WF-001           ──►  Policy Service        GET /v1/policies/:payer/:ver   │
 │                        (:3001)               → policy_hash, predicates      │
@@ -665,27 +897,59 @@ Every arrow in the system — who calls whom, with what, and why:
 │                                                                              │
 │  WF-002           ──►  Consent Service       GET /v1/consents/revocations   │
 │                        (:3004)               → [{ consent_id, revoked_at }] │
+│                                               [ENC] ConfidentialHTTPClient │
 │                                                                              │
 │  WF-002           ──►  ConsentRegistry       callContract: isConsentActive  │
-│                        (on-chain)            → bool (verify revocation)     │
+│                        (on-chain)            → bool (verify before revoke)  │
+│                                                                              │
+│  WF-002           ──►  ConsentRegistry       writeReport: revokeConsent     │
+│                        (on-chain)            → ACTIVE → REVOKED             │
+│                                                                              │
+│  WF-002           ──►  ClaimDecisionRegistry callContract: getDecision      │
+│                        (on-chain)            → affected claim state         │
+│                                                                              │
+│  WF-002           ──►  ClaimDecisionRegistry writeReport: challengeClaim    │
+│                        (on-chain)            → APPROVED → CHALLENGED        │
+│                                                                              │
+│  WF-002           ──►  ClaimEscrow           writeReport: cancelPayout      │
+│                        (on-chain)            → SCHEDULED → CANCELLED        │
 │                                                                              │
 │  WF-002           ──►  Callback Service      POST /v1/callbacks/consent-    │
-│                        (:3006)               revoked → flagged_claims       │
+│                        (:3006)               revoked → cascade result       │
 │                                                                              │
-│  WF-003           ──►  Callback Service      GET /v1/callbacks/pending-     │
-│                        (:3006)               challenges → [{ claim_id }]    │
+│  WF-003           ──►  ClaimDecisionRegistry logTrigger: ProofEvaluated     │
+│                        (on-chain)            → fires on approval events     │
 │                                                                              │
 │  WF-003           ──►  ClaimDecisionRegistry callContract: getDecision      │
 │                        (on-chain)            → { state, proofHash, ... }    │
 │                                                                              │
+│  WF-003           ──►  ConsentRegistry       callContract: isConsentActive  │
+│                        (on-chain)            → bool (post-approval check)   │
+│                                                                              │
+│  WF-003           ──►  Policy Service        GET /v1/policies/:payer/:ver   │
+│                        (:3001)               → policy predicates [consensus]│
+│                                                                              │
+│  WF-003           ──►  Proof Service Stub    POST /v1/proofs/med-necessity  │
+│                        (:3003)               → compliance re-eval [ENC]     │
+│                                                                              │
+│  WF-003           ──►  ClaimDecisionRegistry writeReport: challengeClaim    │
+│                        (on-chain)            → auto-challenge if risk       │
+│                                                                              │
 │  WF-003           ──►  Callback Service      POST /v1/callbacks/challenge-  │
-│                        (:3006)               resolved → resolved_count      │
+│                        (:3006)               resolved → compliance result   │
+│                                                                              │
+│  WF-004           ──►  Provider Adapter       GET /v1/ehr/claims?status=    │
+│                        (:3005)               BILLED → outstanding claims   │
+│                                               [ENC] ConfidentialHTTPClient │
 │                                                                              │
 │  WF-004           ──►  ClaimDecisionRegistry callContract: getDecision      │
 │                        (on-chain)            → { state, updatedAt }         │
 │                                                                              │
 │  WF-004           ──►  ClaimEscrow           callContract: getPayout        │
 │                        (on-chain)            → { status, amount }           │
+│                                                                              │
+│  WF-005           ──►  Credential Service   GET /v1/registry/providers     │
+│                        (:3002)               → provider + org name [ENC]   │
 │                                                                              │
 │  WF-005           ──►  Credential Service   POST /v1/credentials/verify    │
 │                        (:3002)               → credential status [ENC]     │
@@ -700,6 +964,61 @@ Every arrow in the system — who calls whom, with what, and why:
 │                        (:3003)               → proof result [ENC]          │
 │                                                                              │
 │  WF-005           ──►  Callback Service      POST /v1/callbacks/prior-auth │
+│                        (:3006)               -decision → { status } [ENC]  │
+│                                                                              │
+│  WF-006           ──►  Provider Adapter      GET /v1/ehr/medications/       │
+│                        (:3005)               pending-auth → medications     │
+│                                               [ENC] ConfidentialHTTPClient │
+│                                                                              │
+│  WF-006           ──►  Policy Service        GET /v1/policies/:payer/:ver   │
+│                        (:3001)               → formulary + caps             │
+│                                                                              │
+│  WF-006           ──►  Proof Service Stub    POST /v1/proofs/med-necessity  │
+│                        (:3003)               → 8-predicate eval [ENC]       │
+│                                                                              │
+│  WF-006           ──►  ClaimDecisionRegistry writeReport: submit+approve    │
+│                        (on-chain)            → full settlement pipeline     │
+│                                                                              │
+│  WF-006           ──►  ClaimEscrow           writeReport: payout pipeline   │
+│                        (on-chain)            → schedule + release + markPaid│
+│                                                                              │
+│  WF-006           ──►  Callback Service      POST /v1/callbacks/prior-auth  │
+│                        (:3006)               -decision → { status } [ENC]  │
+│                                                                              │
+│  WF-007           ──►  ClaimDecisionRegistry logTrigger: ClaimSubmitted     │
+│                        (on-chain)            → fires on new claims          │
+│                                                                              │
+│  WF-007           ──►  Provider Adapter      GET /v1/ehr/claims/transfers/  │
+│                        (:3005)               pending → transfer data [ENC] │
+│                                                                              │
+│  WF-007           ──►  Policy Service        GET /v1/policies/:payer/:ver   │
+│                        (:3001)               → policy predicates            │
+│                                                                              │
+│  WF-007           ──►  Proof Service Stub    POST /v1/proofs/med-necessity  │
+│                        (:3003)               → proof result [ENC]           │
+│                                                                              │
+│  WF-007           ──►  ClaimDecisionRegistry writeReport: approve+markPaid  │
+│                        (on-chain)            → settle transfer claim        │
+│                                                                              │
+│  WF-007           ──►  ClaimEscrow           writeReport: payout pipeline   │
+│                        (on-chain)            → schedule + release           │
+│                                                                              │
+│  WF-007           ──►  Callback Service      POST /v1/callbacks/prior-auth  │
+│                        (:3006)               -decision → { status } [ENC]  │
+│                                                                              │
+│  WF-008           ──►  Policy Service        GET /v1/policies/:payer/:ver   │
+│                        (:3001)               → policy predicates [consensus]│
+│                                                                              │
+│  WF-008           ──►  Proof Service Stub    POST /v1/proofs/med-necessity  │
+│                        (:3003)               → proof result [ENC]           │
+│                                                                              │
+│  WF-008           ──►  ClaimDecisionRegistry writeReport: submit+approve    │
+│                        (on-chain)            → full settlement pipeline     │
+│                                                                              │
+│  WF-008           ──►  ClaimEscrow           writeReport: payout pipeline   │
+│                        (on-chain)            → schedule + release + markPaid│
+│                                                                              │
+│  WF-008           ──►  Callback Service      POST /v1/callbacks/prior-auth  │
 │                        (:3006)               -decision → { status } [ENC]  │
 │                                                                              │
 │  Demo Runner      ──►  All services          GET /healthz → { status: ok } │
@@ -777,6 +1096,8 @@ Bit   Meaning                         Example trigger
  3    Consent invalid/revoked         consent_active == false
  4    Duplicate/nullifier collision   is_duplicate == true
  5    Stale attestation               attestation_age > max_age (86400s)
+ 6    Medication not on formulary   medication not in formulary list (WF-006)
+ 7    Medication amount exceeds cap requested_amount > medication cap (WF-006)
 ```
 
 A bitmap of `0` = all checks pass = `APPROVED`. A bitmap of `8` (bit 3 set) = consent invalid = `DENIED`.
@@ -788,17 +1109,21 @@ A bitmap of `0` = all checks pass = `APPROVED`. A bitmap of `8` (bit 3 set) = co
 How many of each CRE capability type each workflow uses (and the CRE platform limits):
 
 ```
-                    HTTP    Confidential    EVM       EVM
-                   Client   HTTP [ENC]    READ     WRITE     Limit
-                   ──────   ────────────  ──────   ──────    ─────
-  WF-001             1          2           2        5       5 HTTP / 10 READ / 10 WRITE
-  WF-002             0          2           1        0-1     revokeConsent if still ACTIVE
-  WF-003             0          2           1        0-3     challenge → resolve → cancel
-  WF-004             0          0           1-2      0
-  WF-005             0          4           1        0       AES-GCM showcase
-                   ──────   ────────────  ──────   ──────
-  Total per WF       ≤5         ≤5          ≤10      ≤10     All within limits
+                    Trigger   HTTP    Confidential    EVM       EVM
+                    Type     Client   HTTP [ENC]    READ     WRITE     Notes
+                   ──────   ──────   ────────────  ──────   ──────    ─────
+  WF-001           Cron       1          3           2        5       Full prior-auth pipeline
+  WF-002           HTTP       0          2           2        0-3     Consent cascade (revoke+challenge+cancel)
+  WF-003           Log        1          2           2        0-1     Automated compliance gate
+  WF-004           Cron       0          1           1-2      0       EHR cross-check reconciliation
+  WF-005           Cron       0          5           1        0       AES-GCM encryption showcase
+  WF-006           Cron       1          3           2        5       Medication prior-auth pipeline
+  WF-007           Log        1          3           2        4       Transfer claim settlement
+  WF-008           HTTP       1          2           2        5       HTTP prior-auth (no EHR fetch)
+                   ──────   ──────   ────────────  ──────   ──────
+  Total per WF       ≤5         ≤5          ≤10      ≤10     All within CRE limits
 
+  Trigger types: Cron (CronCapability), HTTP (HTTPCapability), Log (EVMClient.logTrigger)
   [ENC] = All ConfidentialHTTPClient calls use encryptOutput: true (AES-GCM)
 ```
 
@@ -843,12 +1168,15 @@ make deploy-verify     # confirm escrow balance + roles
 make services
 
 # 6. Simulate CRE workflows (terminal 2)
-make simulate-wf004    # EVM reads only — no services needed
+make simulate-wf004    # EHR cross-check + EVM reads (needs services + Anvil)
 make simulate-wf001    # full prior-auth flow (needs services + Anvil)
-make simulate-wf002    # consent revocation (needs services + Anvil)
-make simulate-wf003    # challenge resolution (needs services + Anvil)
-make simulate-wf005    # AES-GCM encryption showcase (needs services + Anvil)
-make simulate          # run all 5 sequentially
+make simulate-wf002    # consent cascade via HTTP trigger
+make simulate-wf003    # compliance gate (needs TX_HASH from on-chain event)
+make simulate-wf005    # AES-GCM encryption showcase
+make simulate-wf006    # medication prior-auth
+make simulate-wf007    # transfer settlement (needs TX_HASH from submitClaim)
+make simulate-wf008    # HTTP prior-auth via signed payload
+make simulate          # run cron-triggered workflows sequentially
 
 # 7. Run the E2E demo (3 scenarios: approve, deny, challenge)
 make demo
@@ -868,29 +1196,44 @@ ProofPA/
 │   ├── test/                         52 tests (unit + fuzz + invariant)
 │   └── script/Deploy.s.sol          Deploys all 5, grants roles, seeds data
 │
+├── data/                        Synthetic healthcare data (Synthea CSV format)
+│   └── synthea/                     10 CSV files: patients, encounters, procedures,
+│       ├── patients.csv             conditions, claims, claims_transactions, payers,
+│       ├── encounters.csv           payer_transitions, providers, organizations
+│       ├── claims.csv               8 patients, 6 providers, 5 payers, 12 encounters,
+│       ├── claims_transactions.csv  13 procedures, 12 claims — all interlinked via FKs
+│       └── ...                      Loaded at startup by @proofpa/schemas
+│
 ├── packages/                    Shared TypeScript packages (npm workspaces)
-│   ├── schemas/                     Zod schemas, denial bitmap constants, computeClaimId
+│   ├── schemas/                     Zod schemas, denial bitmap, computeClaimId,
+│   │                                Synthea CSV loader (loadSyntheaData)
 │   ├── eip712-types/                EIP-712 typed data for signed payloads
 │   ├── observability/               Structured JSON logging + correlation IDs
 │   └── sdk-client/                  Contract ABIs + API client functions
 │
 ├── services/                    Backend Express services (ports 3001-3006)
-│   ├── policy-service/              :3001 — GET /v1/policies/:payerId/:version
-│   ├── credential-service/          :3002 — POST /v1/credentials/verify
+│   ├── policy-service/              :3001 — GET /v1/policies + /v1/payers/*
+│   ├── credential-service/          :3002 — POST /v1/credentials + /v1/registry/*
 │   ├── proof-service-stub/          :3003 — POST /v1/proofs/medical-necessity
 │   ├── consent-service/             :3004 — grant/revoke + GET revocations
-│   ├── provider-adapter-api/        :3005 — POST /v1/prior-auth/submit
+│   ├── provider-adapter-api/        :3005 — POST /v1/prior-auth + /v1/ehr/*
 │   └── decision-callback-service/   :3006 — decision/consent/challenge callbacks
 │
 ├── ProofPACRE/                  CRE workflow project (bun, separate from npm)
 │   ├── project.yaml                 CRE targets, RPCs, experimental chains (Anvil)
 │   ├── secrets.yaml                 Vault secret → env var mappings
 │   ├── .env                         Local simulation env vars
-│   ├── wf-001-prior-auth-decision/  HTTPClient + ConfHTTP + EVMClient R/W
-│   ├── wf-002-consent-revocation/   ConfHTTP + EVMClient READ
-│   ├── wf-003-challenge-resolution/ ConfHTTP + EVMClient READ
-│   ├── wf-004-reconciliation-monitor/ EVMClient READ only (pure on-chain)
-│   └── wf-005-encrypted-credential-audit/ 4x ConfHTTP [AES-GCM] + EVMClient READ
+│   ├── wf-001-prior-auth-decision/  Cron trigger — full prior-auth pipeline
+│   ├── wf-002-consent-revocation/   HTTP trigger — consent cascade
+│   ├── wf-003-challenge-resolution/ Log trigger — automated compliance gate
+│   ├── wf-004-reconciliation-monitor/ Cron trigger — EHR cross-check
+│   ├── wf-005-encrypted-credential-audit/ Cron trigger — 5x AES-GCM encrypted calls
+│   ├── wf-006-medication-payment-verification/ Cron trigger — pharmaceutical benefit
+│   ├── wf-007-claim-transfer-settlement/ Log trigger — event-driven settlement
+│   └── wf-008-http-prior-auth/      HTTP trigger — request-driven prior auth
+│
+├── apps/
+│   └── demo-dashboard/          Next.js 16 + React 19 dashboard (:3000)
 │
 ├── tests/                       Vitest integration tests + E2E demo runner
 ├── infra/                       Docker configs, start-services.sh
@@ -977,12 +1320,12 @@ Six Express services handle off-chain logic. Start them all with `make services`
 
 | Port | Service | Endpoints | Called By |
 |---|---|---|---|
-| 3001 | policy-service | `GET /v1/policies/:payerId/:version` | WF-001 |
-| 3002 | credential-service | `POST /v1/credentials/verify` | WF-005 |
-| 3003 | proof-service-stub | `POST /v1/proofs/medical-necessity` | WF-001 |
+| 3001 | policy-service | `GET /v1/policies/:payerId/:version`, `GET /v1/payers`, `GET /v1/payers/:id`, `GET /v1/payers/:id/members`, `GET /v1/payer-transitions` | WF-001, WF-002, WF-005, Dashboard |
+| 3002 | credential-service | `POST /v1/credentials/verify`, `GET /v1/registry/providers`, `GET /v1/registry/providers/:id`, `GET /v1/registry/organizations`, `GET /v1/registry/organizations/:id` | WF-005, Dashboard |
+| 3003 | proof-service-stub | `POST /v1/proofs/medical-necessity` | WF-001, WF-005 |
 | 3004 | consent-service | `POST /v1/consents/grant\|revoke`, `GET /v1/consents/revocations` | WF-002 |
-| 3005 | provider-adapter-api | `POST /v1/prior-auth/submit` | Provider Portal |
-| 3006 | decision-callback-service | `POST /v1/callbacks/prior-auth-decision`, `POST /v1/callbacks/consent-revoked`, `GET /v1/callbacks/pending-challenges`, `POST /v1/callbacks/challenge-resolved` | WF-001, WF-002, WF-003 |
+| 3005 | provider-adapter-api | `POST /v1/prior-auth/submit`, `GET /v1/ehr/patients`, `GET /v1/ehr/encounters`, `GET /v1/ehr/procedures`, `GET /v1/ehr/conditions`, `GET /v1/ehr/claims`, `GET /v1/ehr/claims/outstanding` | Provider Portal, WF-001, WF-003, WF-004, Dashboard |
+| 3006 | decision-callback-service | `POST /v1/callbacks/prior-auth-decision`, `POST /v1/callbacks/consent-revoked`, `GET /v1/callbacks/pending-challenges`, `POST /v1/callbacks/challenge-resolved` | WF-001, WF-002, WF-003, WF-005 |
 
 Health check: `curl http://localhost:{port}/healthz`
 
@@ -1021,6 +1364,30 @@ Scenario C: Challenge → Resolution
   3. Resolution → APPROVED or DENIED after review
 ```
 
+## Synthetic EHR Data (Synthea Format)
+
+The `data/synthea/` directory contains realistic synthetic healthcare data in [Synthea CSV format](https://github.com/synthetichealth/synthea/wiki/CSV-File-Data-Dictionary) — the same format used by professional EHR systems. All data is fictional (no real PHI).
+
+| File | Records | Description |
+|------|---------|-------------|
+| `patients.csv` | 8 | Patient demographics, income, lifetime healthcare costs |
+| `providers.csv` | 6 | Clinicians across 5 organizations |
+| `organizations.csv` | 5 | Hospitals, specialty clinics, imaging centers |
+| `payers.csv` | 5 | BlueCross PPO, Aetna HMO, Medicare, Medicaid CA, UnitedHealth |
+| `encounters.csv` | 12 | Office visits, inpatient admissions, pre-op evaluations |
+| `procedures.csv` | 13 | CABG, stent placement, MRI, biopsy, CT, echo, stress test |
+| `claims.csv` | 12 | Insurance claims — 10 CLOSED + 2 BILLED with outstanding balances |
+| `claims_transactions.csv` | 15 | CHARGE, PAYMENT, TRANSFERIN/OUT per claim line |
+
+**Key demo claims (outstanding):**
+
+| Patient | Procedure | Total Cost | Outstanding | ProofPA Mapping |
+|---------|-----------|-----------|-------------|-----------------|
+| Maria Garcia | Coronary stent ($38K) | $48,500 | $7,275 | WF-001 happy path → settled in <120s |
+| William O'Brien | PCI ($52K) | $92,000 | $4,600 | Medicare prior auth → instant settlement |
+
+These are served by the provider-adapter-api at `GET /v1/ehr/claims/outstanding` and fetched by WF-001, WF-003, and WF-004 via ConfidentialHTTPRequest. WF-002 fetches payer enrollment from the policy-service, and WF-005 fetches provider/org data from the credential-service.
+
 ## Make Targets
 
 ```
@@ -1040,7 +1407,7 @@ make simulate            # simulate all 5 CRE workflows
 make simulate-wf001      # simulate WF-001 (needs services + Anvil)
 make simulate-wf002      # simulate WF-002 (needs services + Anvil)
 make simulate-wf003      # simulate WF-003 (needs services + Anvil)
-make simulate-wf004      # simulate WF-004 (needs Anvil only)
+make simulate-wf004      # simulate WF-004 (needs services + Anvil)
 make simulate-wf005      # simulate WF-005: AES-GCM encryption showcase
 make demo                # run E2E demo (3 scenarios)
 make demo-full           # full E2E: anvil → deploy → services → demo → CRE broadcast
@@ -1053,12 +1420,28 @@ make clean               # remove build artifacts
 ## Key Design Decisions
 
 - **No PHI onchain or in CRE logs** — only hashes, commitments, state transitions, and payout events go on-chain. CRE workflow logs contain only IDs (claim hashes, consent hashes), procedure codes (PROC_*, CPT), provider fixture IDs, predicate check counts, and on-chain state names — never patient names, MRNs, diagnoses, or clinical narratives. Sensitive medical data stays off-chain in encrypted CRE enclave calls and service responses.
-- **Deterministic claim ID** — `keccak256(payer_id | provider_id_hash | encounter_ref_hash | procedure_bucket | service_date)` ensures the same claim always gets the same ID. Duplicate submissions revert.
+- **Deterministic claim ID** — `keccak256(payer_id | provider_id_hash | encounter_ref_hash | procedure_code | service_date)` ensures the same claim always gets the same ID. Duplicate submissions revert.
 - **ZK deferred** — MVP uses signature-based verification (physician JWS attestation, payer policy hash signature, CRE decision report signature). ZK proof circuits are post-hackathon.
 - **All 3 CRE capabilities** — HTTPClient for public consensus reads, ConfidentialHTTPClient for secret-injected enclave calls, EVMClient for on-chain contract interaction. This is the first project to use all three in a single healthcare workflow.
-- **AES-GCM output encryption** — All 10 ConfidentialHTTPClient calls across WF-001/002/003/005 use `encryptOutput: true`, ensuring HTTP response payloads are AES-GCM encrypted end-to-end through the DON network. WF-005 is a dedicated showcase with 4 encrypted calls + audit metadata.
+- **AES-GCM output encryption** — All 16 ConfidentialHTTPClient calls across WF-001/002/003/004/005 use `encryptOutput: true`, ensuring HTTP response payloads are AES-GCM encrypted end-to-end through the DON network. Every workflow now fetches Synthea data via encrypted calls: WF-001 fetches EHR claims, WF-002 fetches payer enrollment, WF-003 fetches EHR challenge context, WF-004 cross-checks outstanding claims, and WF-005 fetches provider registry data (5 encrypted calls, at CRE limit).
+- **Synthea-format EHR data** — Realistic synthetic healthcare data (patients, encounters, procedures, claims, payers, providers) in [Synthea CSV format](https://github.com/synthetichealth/synthea/wiki/CSV-File-Data-Dictionary) is loaded at service startup and served via REST endpoints. CRE workflows fetch this data via ConfidentialHTTPRequest to cross-check against on-chain state, demonstrating how ProofPA integrates with existing EHR/billing systems.
 - **CRE log privacy** — Workflow `runtime.log()` calls never emit PHI. Logs reference only claim/consent hashes, procedure codes (e.g., `PROC_KNEE_MRI`), predicate pass/fail counts, provider fixture IDs, and on-chain state names. Clinical narrative (patient names, diagnoses, dollar amounts) stays in the service responses — parsed for business logic but never echoed to DON logs.
 - **Network**: Base Sepolia (with local Anvil for development via experimental-chains)
 - **Token**: ERC-20 mock USDC (6 decimals)
+
+### CRE SDK Feedback: Missing `ConfidentialHTTPSendRequester`
+
+The Chainlink CRE workshop demonstrated a `ConfidentialHTTPSendRequester` callback pattern for confidential HTTP calls with explicit per-call DON consensus — analogous to the `SendRequester` + `consensusIdenticalAggregation` pattern available on `HTTPClient`. **This type does not exist in `@chainlink/cre-sdk` as of v1.1.4** (latest at time of writing, March 2026). The `ConfidentialHTTPClient` capability is still `confidential-http@1.0.0-alpha` and only exposes the direct `sendRequest(runtime, input)` API without a consensus aggregation overload.
+
+**Current workaround**: Confidential HTTP calls get DON consensus at the **workflow level** — all DON nodes independently execute the handler, and the DON verifies identical workflow output. Per-call explicit consensus (as shown in the workshop) would allow finer-grained verification and is the pattern we'd like to adopt once the SDK ships it.
+
+**What we'd use**: Every `ConfidentialHTTPClient.sendRequest()` call (16 across 5 workflows) would be wrapped in the callback+consensus pattern, giving judges a clear demonstration of DON consensus on each encrypted HTTP call — not just on the final workflow output.
+
+| Component | Version | Status |
+|---|---|---|
+| CRE CLI | v1.3.0 | Updated |
+| `@chainlink/cre-sdk` | v1.1.4 | Latest — `ConfidentialHTTPSendRequester` not yet available |
+| `confidential-http` capability | `1.0.0-alpha` | Alpha — direct API only, no callback+consensus overload |
+| `http-actions` capability | `1.0.0-alpha` | Has `SendRequester` + `consensusIdenticalAggregation` (used in WF-001) |
 
 See `docs/MVP_DECISIONS.md` for the full list of frozen architecture decisions.

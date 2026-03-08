@@ -1,9 +1,11 @@
 {
-  "schedule": "*/30 * * * * *",
+  "authorizedSignerAddress": "0x0000000000000000000000000000000000000000",
   "consentServiceUrl": "https://proofpa-consent.example.com",
   "callbackServiceUrl": "https://proofpa-callback.example.com",
+  "owner": "",
   "chainSelector": "10344971235874465080",
   "consentRegistryAddress": "0x0000000000000000000000000000000000000000",
-  "creSignerAddress": "0x0000000000000000000000000000000000000000",
-  "owner": ""
+  "claimDecisionRegistryAddress": "0x0000000000000000000000000000000000000000",
+  "claimEscrowAddress": "0x0000000000000000000000000000000000000000",
+  "creSignerAddress": "0x0000000000000000000000000000000000000000"
 }

@@ -131,9 +131,10 @@ const CLAIM_ESCROW_ABI = [
 // ---------------------------------------------------------------------------
 export type Config = {
   schedule: string;                    // Cron expression — triggers workflow on DON nodes
-  policyServiceUrl: string;            // policy-service base URL (port 3002)
-  proofServiceUrl: string;             // proof-service-stub base URL (port 3005)
+  policyServiceUrl: string;            // policy-service base URL (port 3001)
+  proofServiceUrl: string;             // proof-service-stub base URL (port 3003)
   callbackServiceUrl: string;          // decision-callback-service base URL (port 3006)
+  ehrServiceUrl: string;               // provider-adapter-api base URL (port 3005) — Synthea EHR data
   owner: string;                       // Workflow owner address — used for CRE registration
   chainSelector: string;               // EIP-155 chain selector — Base Sepolia in staging
   consentRegistryAddress: string;      // Deployed ConsentRegistry contract (from Deploy.s.sol)
@@ -174,8 +175,69 @@ export const onPriorAuthCron = (
   const policyHash = ("0x" + "a1".repeat(32)) as `0x${string}`;
   const consentHash = ("0x" + "c0".repeat(32)) as `0x${string}`;
   const proofHash = ("0x" + "b2".repeat(32)) as `0x${string}`;
-  const requestedAmount = 85000n; // $85.00 in USDC (6 decimals = 85000000, but demo uses 85000)
+  let requestedAmount = 85000n;
+  let procedureCode = "PROC_KNEE_MRI";
   const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
+
+  // SNOMED-CT → PROC_* mapping for Synthea procedure codes
+  const SNOMED_TO_PROC: Record<string, string> = {
+    "36969009": "PROC_CARDIAC_CT",    // Coronary artery stent placement
+    "175066001": "PROC_CARDIAC_CT",   // Percutaneous coronary intervention
+    "232717009": "PROC_CARDIAC_CT",   // Coronary artery bypass graft
+    "241615005": "PROC_KNEE_MRI",     // MRI of knee
+    "399208008": "PROC_SPINE_XRAY",   // CT scan of chest
+    "40701008": "PROC_CARDIAC_CT",    // Echocardiography
+    "29303009": "PROC_CARDIAC_CT",    // Electrocardiographic monitoring
+    "418766005": "PROC_CARDIAC_CT",   // Cardiac stress test
+  };
+
+  // ---- Step 0: Fetch real encounter/procedure data from EHR [ENCRYPTED HTTP] ----
+  // Pulls Synthea-format data from provider-adapter-api to derive procedure code
+  // and requested amount programmatically from actual EHR claim data.
+  const confidentialClient = new ConfidentialHTTPClient();
+  let ehrClaimCount = 0;
+
+  if (config.ehrServiceUrl) {
+    runtime.log("WF-001: [ENCRYPTED] Fetching outstanding claims from EHR");
+    const ehrResp = confidentialClient.sendRequest(runtime, {
+      vaultDonSecrets: [
+        { key: "aesEncryptionKey", owner: config.owner },
+      ],
+      request: {
+        url: `${config.ehrServiceUrl}/v1/ehr/claims/outstanding`,
+        method: "GET",
+        multiHeaders: {
+          "Content-Type": { values: ["application/json"] },
+        },
+        encryptOutput: true,
+      },
+    }).result();
+
+    if (ok(ehrResp)) {
+      const ehrData = safeParse(text(ehrResp));
+      if (ehrData && Array.isArray(ehrData.outstanding_claims) && ehrData.outstanding_claims.length > 0) {
+        ehrClaimCount = ehrData.outstanding_claims.length;
+        const claim = ehrData.outstanding_claims[0] as Record<string, unknown>;
+        const procs = claim.procedures as Array<Record<string, unknown>> | undefined;
+        if (procs && procs.length > 0) {
+          // Map SNOMED-CT code to PROC_* code and extract cost
+          const snomedCode = (procs[0].code as string) ?? "";
+          const mappedProc = SNOMED_TO_PROC[snomedCode];
+          if (mappedProc) {
+            procedureCode = mappedProc;
+          }
+          const costStr = (procs[0].cost as string) ?? "";
+          const costNum = Math.round(parseFloat(costStr));
+          if (costNum > 0) {
+            requestedAmount = BigInt(costNum);
+          }
+        }
+        runtime.log(`WF-001: EHR data loaded — ${ehrClaimCount} outstanding claims, procedure ${procedureCode}, amount ${requestedAmount}`);
+      }
+    } else {
+      runtime.log("WF-001: EHR fetch failed — using default procedure and amount");
+    }
+  }
 
   // ---- Step 1: Fetch active policy from policy-service [HTTP] ----
   const httpClient = new HTTPClient();
@@ -200,7 +262,7 @@ export const onPriorAuthCron = (
   )().result();
 
   const policyData = safeParse(policyResult);
-  runtime.log(`WF-001: Policy fetched for PROC_KNEE_MRI — predicates ${policyData?.predicates ? "loaded" : "missing"}`);
+  runtime.log(`WF-001: Policy fetched for ${procedureCode} — predicates ${policyData?.predicates ? "loaded" : "missing"}`);
 
   // ---- Step 2: Verify consent on-chain [EVM READ] ----
   const evmClient = new EVMClient(BigInt(config.chainSelector));
@@ -254,13 +316,11 @@ export const onPriorAuthCron = (
   runtime.log(`WF-001: Policy verified on-chain: ${policyActive ? "ACTIVE" : "INACTIVE"}`);
 
   // ---- Step 4: Call proof-service-stub via confidential HTTP ----
-  const confidentialClient = new ConfidentialHTTPClient();
-
-  runtime.log(`WF-001: [ENCRYPTED] Evaluating medical necessity for claim ${claimId.substring(0, 10)}...`);
+  runtime.log(`WF-001: [ENCRYPTED] Evaluating medical necessity — ${procedureCode}, amount ${requestedAmount}`);
   const proofJsonStr = JSON.stringify({
     claim_id: claimId,
     policy_hash: policyHash,
-    procedure_code: "PROC_KNEE_MRI",
+    procedure_code: procedureCode,
     requested_amount: requestedAmount.toString(),
     consent_active: true,
     credential_valid: true,
@@ -285,8 +345,12 @@ export const onPriorAuthCron = (
     },
   }).result();
 
-  const proofOk = ok(proofResp);
+  const proofHttpOk = ok(proofResp);
   const proofBody = text(proofResp);
+  const proofData = safeParse(proofBody);
+  // Use the actual proof result from the response body, not just HTTP status.
+  // The proof service returns 200 even on FAIL — the result field is authoritative.
+  const proofOk = proofHttpOk && proofData?.result === "PASS";
   const decisionState = proofOk ? "APPROVED" : "DENIED";
   runtime.log(`WF-001: [ENCRYPTED] Proof evaluation: ${proofOk ? "PASSED" : "FAILED"}`);
 
@@ -310,7 +374,8 @@ export const onPriorAuthCron = (
   runtime.log(`WF-001: Claim submitted on-chain — tx status: ${submitResult.txStatus === 1 ? "CONFIRMED" : submitResult.txStatus}`);
 
   // ---- Step 6: Record proof result on-chain [EVM WRITE] ----
-  const reasonBitmap = proofOk ? 0n : 1n; // bit 0 = credential invalid
+  // Use the actual reason_bitmap from the proof service response.
+  const reasonBitmap = proofOk ? 0n : BigInt(proofData?.reason_bitmap ?? "1");
   const setProofCalldata = encodeFunctionData({
     abi: CLAIM_DECISION_REGISTRY_ABI,
     functionName: "setProofResult",
@@ -340,7 +405,7 @@ export const onPriorAuthCron = (
       ],
     });
 
-    runtime.log(`WF-001: PAYOUT: ${requestedAmount} units scheduled to treasury (${config.treasuryAddress.substring(0, 6)}...${config.treasuryAddress.substring(38)})`);
+    runtime.log(`WF-001: PAYOUT: scheduling to treasury ${config.treasuryAddress.substring(0, 6)}...${config.treasuryAddress.substring(38)}`);
     const payoutReport = runtime.report(prepareReportRequest(scheduleCalldata)).result();
     const payoutResult = evmClient.writeReport(runtime, {
       receiver: config.claimEscrowAddress,

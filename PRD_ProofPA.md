@@ -108,6 +108,13 @@ Enable minimum-necessary, machine-verifiable adjudication for healthcare insuran
 7. Audit trail:
 - Every state transition emits an immutable event with timestamp, claim ID hash, policy version hash, and actor role.
 
+8. Medication payment verification:
+- System fetches medications pending prior authorization from EHR data (cost > $100, active prescription).
+- Verify patient consent and policy status on-chain before evaluation.
+- Check medication against payer formulary (covered medication list) and per-medication cost caps.
+- If formulary check passes and all existing predicates pass, approve claim and release payer coverage amount via escrow.
+- Denial bitmap extended with bits 6 (medication not on formulary) and 7 (medication amount exceeds cap).
+
 ## 8.2 Non-Functional Requirements
 - Privacy:
   - No PHI onchain.
@@ -294,6 +301,7 @@ Output:
 4. Denied request returns machine-readable reason codes.
 5. Consent revocation blocks new approval attempts for revoked scope.
 6. Full audit trail can be exported from logs + onchain events.
+7. A medication prescription triggers formulary verification and payer coverage payout when approved.
 
 ## 21. Future Roadmap (Post-Hackathon)
 - Expand from prior-auth to post-procedure claims settlement.
@@ -308,5 +316,6 @@ Output:
 3. CRE orchestrates policy lookup, credential checks, proof path, and onchain decision.
 4. Approved claim pays out from escrow.
 5. Second request fails proof and is denied without exposing full chart data.
+6. Patient is prescribed a medication. CRE fetches the pending prescription, verifies formulary coverage and cost caps, and pays out the payer-covered amount through escrow — no PHI touches the chain.
 
 This demonstrates privacy-preserving adjudication with verifiable automation.

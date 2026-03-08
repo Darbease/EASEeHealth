@@ -42,7 +42,7 @@ flowchart LR
 - `provider_id_hash`: hash of provider identifier (NPI/DID).
 - `encounter_ref_hash`: hash of encounter reference.
 - `policy_hash`: hash of versioned policy payload.
-- `claim_id`: `keccak256(payer_id|provider_id_hash|encounter_ref_hash|procedure_bucket|service_date)`.
+- `claim_id`: `keccak256(payer_id|provider_id_hash|encounter_ref_hash|procedure_code|service_date)`.
 - `consent_scope_hash`: hash of consent scope object (purpose + data categories + recipient).
 
 ## 4.2 Core Records
@@ -76,7 +76,7 @@ flowchart LR
 
 4. `ClaimDecision`
 - `claim_id` (bytes32)
-- `state` (`SUBMITTED | PROOF_PENDING | APPROVED | DENIED | CHALLENGED | PAID`)
+- `state` (`SUBMITTED | PROOF_PENDING* | APPROVED | DENIED | CHALLENGED | PAID`) — *PROOF_PENDING defined in enum but not used in MVP; `setProofResult` transitions directly SUBMITTED → APPROVED/DENIED
 - `policy_hash` (bytes32)
 - `proof_hash` (bytes32)
 - `reason_bitmap` (uint256)
@@ -134,7 +134,7 @@ All mutating methods are role-gated and emit events.
 - `ProofEvaluated(bytes32 claimId, bytes32 proofHash, bool approved, uint256 reasonBitmap)`
 - `ClaimChallenged(bytes32 claimId, uint16 reasonCode)`
 - `ClaimResolved(bytes32 claimId, bool approved)`
-- `ClaimPaid(bytes32 claimId, address recipient, uint256 amount)`
+- `ClaimPaid(bytes32 claimId)`
 
 ### State Invariants
 - `PAID` can only follow `APPROVED`.
@@ -280,14 +280,14 @@ Steps:
 - `policy_hash`
 - `consent_scope_hash`
 - `provider_credential_root`
-- `procedure_bucket`
+- `procedure_code`
 - `amount_bucket`
 - `encounter_nullifier`
 - `service_date_epoch`
 
 ## 8.2 Predicates
 - `P1`: provider credential valid at `service_date`.
-- `P2`: policy covers `procedure_bucket`.
+- `P2`: policy covers `procedure_code`.
 - `P3`: requested amount <= policy cap for bucket.
 - `P4`: consent active and scope allows recipient/purpose.
 - `P5`: encounter not previously approved (nullifier uniqueness).
@@ -387,6 +387,7 @@ Proof result is valid only if `P1..P6 == true`.
 - Scenario A: valid attestation/proof -> Approved + Paid
 - Scenario B: revoked consent -> Denied (bit 3 set)
 - Scenario C: challenged claim -> payout blocked
+- Scenario D: medication prior auth -> formulary + cap check (8 predicates) -> Approved + payer coverage paid
 
 ## 14. Implementation Backlog (Engineering-Ready)
 1. Scaffold contracts and access roles.
@@ -394,7 +395,7 @@ Proof result is valid only if `P1..P6 == true`.
 3. Build Provider Adapter and callback bus.
 4. Implement policy service + rule parser.
 5. Implement prover/verifier stub with reason bitmap.
-6. Build CRE workflows `WF-001..WF-005`.
+6. Build CRE workflows `WF-001..WF-006`.
 7. Add ops console (minimal) for challenge actions.
 8. Add observability dashboards and alert rules.
 

@@ -85,3 +85,10 @@ export {
 
 export { computeClaimId } from "./claim-id.js";
 export { CLINICAL } from "./demo-clinical-data.js";
+export { loadSyntheaData } from "./synthea-loader.js";
+export type {
+  SyntheaData, SyntheaPatient, SyntheaEncounter, SyntheaProcedure,
+  SyntheaCondition, SyntheaClaim, SyntheaClaimTransaction,
+  SyntheaPayer, SyntheaPayerTransition, SyntheaProvider, SyntheaOrganization,
+  SyntheaMedication,
+} from "./synthea-loader.js";

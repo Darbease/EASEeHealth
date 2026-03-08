@@ -1,8 +1,9 @@
 # ==========================================================================
-# WF-002: Consent Revocation
+# WF-002: Consent Revocation (HTTP trigger)
 # ==========================================================================
-# Cron-triggered. Polls consent service for revocation events and
-# flags pending claims for re-evaluation.
+# HTTP-triggered consent cascade: patient portal sends a signed revocation
+# request, workflow fires immediately to revoke consent on-chain and
+# cascade across affected claims (challenge + cancel payout).
 
 # ==========================================================================
 staging-settings:

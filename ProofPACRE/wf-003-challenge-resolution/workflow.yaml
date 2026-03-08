@@ -1,8 +1,9 @@
 # ==========================================================================
-# WF-003: Challenge Resolution
+# WF-003: Challenge Resolution (Log trigger)
 # ==========================================================================
-# Cron-triggered. Checks for pending challenge resolutions and
-# posts decisions to the callback service.
+# Log-triggered automated compliance gate: fires when ProofEvaluated is
+# emitted on-chain. Runs risk analysis on approved claims — challenges
+# automatically if amount exceeds caps or consent was revoked post-approval.
 
 # ==========================================================================
 staging-settings:

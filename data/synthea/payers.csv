@@ -1,0 +1,6 @@
+Id,Name,Ownership,Address,City,State_Headquartered,Zip,Phone,Amount_Covered,Amount_Uncovered,Revenue,Covered_Encounters,Uncovered_Encounters,Covered_Medications,Uncovered_Medications,Covered_Procedures,Uncovered_Procedures,Covered_Immunizations,Uncovered_Immunizations,Unique_Customers,QOLS_Avg,Member_Months
+a1b2c3d4-1001-4000-8000-000000000001,BlueCross Preferred PPO,Private,225 North Michigan Avenue,Chicago,IL,60601,8005551234,32500000.00,4800000.00,41200000.00,9800,1200,6500,800,3200,400,1800,50,4200,0.82,186000
+a1b2c3d4-1002-4000-8000-000000000002,Aetna Gold HMO,Private,151 Farmington Avenue,Hartford,CT,06156,8005555678,28100000.00,5200000.00,37800000.00,8500,1500,5800,1100,2800,600,1500,80,3600,0.78,152000
+a1b2c3d4-1003-4000-8000-000000000003,Medicare,Government,7500 Security Boulevard,Baltimore,MD,21244,8005556789,45200000.00,2100000.00,0.00,14200,600,9800,300,5100,200,2200,30,8200,0.75,380000
+a1b2c3d4-1004-4000-8000-000000000004,Medicaid California,Government,1501 Capitol Avenue,Sacramento,CA,95814,8005559012,18900000.00,1500000.00,0.00,7200,400,4200,200,1800,100,1200,20,5100,0.71,245000
+a1b2c3d4-1005-4000-8000-000000000005,UnitedHealth Choice Plus,Private,9900 Bren Road East,Minnetonka,MN,55343,8005553456,35800000.00,3900000.00,44100000.00,10500,900,7200,600,3800,350,2000,40,4800,0.84,210000

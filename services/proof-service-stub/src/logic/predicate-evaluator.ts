@@ -8,6 +8,10 @@ export interface PredicateInputs {
   is_duplicate: boolean
   attestation_age_seconds: number
   attestation_max_age_seconds: number
+  medication_code?: string
+  medication_amount?: number
+  covered_medications?: string[]
+  medication_caps?: Record<string, number>
 }
 
 export interface PredicateResult {
@@ -21,6 +25,8 @@ const BIT_AMOUNT_EXCEEDS_CAP = 1 << 2
 const BIT_CONSENT_INVALID = 1 << 3
 const BIT_DUPLICATE_NULLIFIER = 1 << 4
 const BIT_STALE_ATTESTATION = 1 << 5
+const BIT_MEDICATION_NOT_COVERED = 1 << 6
+const BIT_MED_AMOUNT_EXCEEDS_CAP = 1 << 7
 
 export function evaluatePredicates(inputs: PredicateInputs): PredicateResult {
   let bitmap = 0
@@ -34,6 +40,15 @@ export function evaluatePredicates(inputs: PredicateInputs): PredicateResult {
   if (!inputs.consent_active) bitmap |= BIT_CONSENT_INVALID
   if (inputs.is_duplicate) bitmap |= BIT_DUPLICATE_NULLIFIER
   if (inputs.attestation_age_seconds > inputs.attestation_max_age_seconds) bitmap |= BIT_STALE_ATTESTATION
+
+  // Medication formulary checks (only when medication fields are provided)
+  if (inputs.medication_code && inputs.covered_medications) {
+    if (!inputs.covered_medications.includes(inputs.medication_code)) bitmap |= BIT_MEDICATION_NOT_COVERED
+  }
+  if (inputs.medication_code && inputs.medication_amount !== undefined && inputs.medication_caps) {
+    const medCap = inputs.medication_caps[inputs.medication_code]
+    if (medCap !== undefined && inputs.medication_amount > medCap) bitmap |= BIT_MED_AMOUNT_EXCEEDS_CAP
+  }
 
   return {
     result: bitmap === 0 ? "PASS" : "FAIL",

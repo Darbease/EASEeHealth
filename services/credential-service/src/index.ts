@@ -1,7 +1,7 @@
 import express from "express"
 import { correlationMiddleware, logger } from "@proofpa/observability"
 import { z } from "zod"
-import { CLINICAL } from "@proofpa/schemas"
+import { CLINICAL, loadSyntheaData } from "@proofpa/schemas"
 
 const app = express()
 app.use(express.json())
@@ -48,6 +48,47 @@ app.post("/v1/credentials/verify", (req, res) => {
         }
       : undefined,
   })
+})
+
+// ---------------------------------------------------------------------------
+// Provider/Organization Registry — Synthea-format provider and org data
+// Consumed by CRE workflows via ConfidentialHTTPRequest.
+// ---------------------------------------------------------------------------
+const synthea = loadSyntheaData()
+
+app.get("/v1/registry/providers", (req, res) => {
+  const orgId = req.query.organization as string | undefined
+  const specialty = req.query.specialty as string | undefined
+  let filtered = synthea.providers
+  if (orgId) filtered = filtered.filter((p) => p.Organization === orgId)
+  if (specialty) filtered = filtered.filter((p) => p.Speciality.toLowerCase().includes(specialty.toLowerCase()))
+  // Enrich providers with organization name to avoid needing a separate org lookup call
+  const enriched = filtered.map((p) => {
+    const org = synthea.organizations.find((o) => o.Id === p.Organization)
+    return { ...p, OrganizationName: org?.Name ?? "Unknown" }
+  })
+  logger.info({ correlation_id: req.correlationId }, `Registry query: returning ${enriched.length} providers`)
+  res.json({ providers: enriched, count: enriched.length })
+})
+
+app.get("/v1/registry/providers/:id", (req, res) => {
+  const provider = synthea.providers.find((p) => p.Id === req.params.id)
+  if (!provider) { res.status(404).json({ error: "Provider not found" }); return }
+  const org = synthea.organizations.find((o) => o.Id === provider.Organization)
+  const encounters = synthea.encounters.filter((e) => e.Provider === provider.Id)
+  res.json({ provider, organization: org, recent_encounters: encounters.length })
+})
+
+app.get("/v1/registry/organizations", (req, res) => {
+  logger.info({ correlation_id: req.correlationId }, `Registry query: returning ${synthea.organizations.length} organizations`)
+  res.json({ organizations: synthea.organizations, count: synthea.organizations.length })
+})
+
+app.get("/v1/registry/organizations/:id", (req, res) => {
+  const org = synthea.organizations.find((o) => o.Id === req.params.id)
+  if (!org) { res.status(404).json({ error: "Organization not found" }); return }
+  const providers = synthea.providers.filter((p) => p.Organization === org.Id)
+  res.json({ organization: org, providers, provider_count: providers.length })
 })
 
 app.get("/healthz", (_req, res) => res.json({ status: "ok" }))

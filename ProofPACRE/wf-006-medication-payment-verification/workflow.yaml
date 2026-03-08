@@ -1,0 +1,24 @@
+# ==========================================================================
+# WF-006: Medication Payment Verification
+# ==========================================================================
+# Cron-triggered workflow that simulates a pharmaceutical benefit check:
+# verify active insurance, confirm clinical need, check formulary coverage,
+# and execute payment via smart contract. Reuses all 5 existing contracts.
+
+# ==========================================================================
+staging-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF006-MedicationPaymentVerification-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: "../secrets.yaml"
+
+# ==========================================================================
+production-settings:
+  user-workflow:
+    workflow-name: "ProofPA-WF006-MedicationPaymentVerification-production"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: "../secrets.yaml"

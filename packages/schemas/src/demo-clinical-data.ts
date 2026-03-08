@@ -79,6 +79,21 @@ export const CLINICAL = {
     },
   } as Record<string, { cpt: string; description: string; cap: number }>,
 
+  medications: {
+    "309362": { rxnorm: "309362", description: "Clopidogrel 75 MG Oral Tablet", cap: 35000 },
+    "314076": { rxnorm: "314076", description: "Lisinopril 10 MG Oral Tablet", cap: 6000 },
+    "314231": { rxnorm: "314231", description: "Nitroglycerin 0.4 MG/ACTUAT Mucosal Spray", cap: 15000 },
+    "205532": { rxnorm: "205532", description: "Celecoxib 200 MG Oral Capsule", cap: 45000 },
+    "310261": { rxnorm: "310261", description: "Tamoxifen 20 MG Oral Tablet", cap: 100000 },
+    "329528": { rxnorm: "329528", description: "Amlodipine 5 MG Oral Tablet", cap: 5000 },
+    "259255": { rxnorm: "259255", description: "Atorvastatin 40 MG Oral Tablet", cap: 25000 },
+    "860975": { rxnorm: "860975", description: "Metformin hydrochloride 500 MG Oral Tablet", cap: 5000 },
+    "860999": { rxnorm: "860999", description: "Metformin hydrochloride 1000 MG Oral Tablet", cap: 8000 },
+    "310534": { rxnorm: "310534", description: "Glipizide 5 MG Oral Tablet", cap: 8000 },
+    "197805": { rxnorm: "197805", description: "Ibuprofen 800 MG Oral Tablet", cap: 4000 },
+    "308182": { rxnorm: "308182", description: "Amoxicillin 500 MG Oral Capsule", cap: 5000 },
+  } as Record<string, { rxnorm: string; description: string; cap: number }>,
+
   consent: {
     type: "HIPAA Authorization for Treatment, Payment, and Healthcare Operations",
     scope: "Prior Authorization Data Sharing",
@@ -98,9 +113,11 @@ export const CLINICAL = {
       "Consent invalid/revoked",
       "Duplicate/nullifier collision",
       "Stale attestation",
+      "Medication not on formulary",
+      "Medication amount exceeds cap",
     ];
     const reasons: string[] = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       if (bitmap & (1 << i)) reasons.push(labels[i]);
     }
     return reasons;
