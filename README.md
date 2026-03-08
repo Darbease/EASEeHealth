@@ -1239,47 +1239,77 @@ forge --version   # any recent
 ~/.cre/bin/cre version  # v1.2+
 ```
 
+## Prerequisites
+
+| Tool | Version | Install |
+|------|---------|---------|
+| **Node.js** | >= 18 | [nodejs.org](https://nodejs.org/) |
+| **Foundry** (forge, anvil, cast) | >= 1.0 | `curl -L https://foundry.paradigm.xyz \| bash && foundryup` |
+| **Bun** | >= 1.0 | `curl -fsSL https://bun.sh/install \| bash` |
+| **Chainlink CRE CLI** | latest | `npx --yes @aspect-build/cli install && cre install` |
+
 ## Quick Start
 
+### One command (full E2E demo)
+
 ```bash
-# 1. Clone and install everything
-git clone https://github.com/Darbease/ProofPA.git
-cd ProofPA
+git clone --recurse-submodules https://github.com/Darbease/EASEeHealth.git
+cd EASEeHealth
+make demo-full    # anvil → deploy → services → demo → CRE simulate
+```
+
+### Step by step
+
+```bash
+# 1. Clone (--recurse-submodules pulls Foundry + OpenZeppelin deps)
+git clone --recurse-submodules https://github.com/Darbease/EASEeHealth.git
+cd EASEeHealth
+
+# If you already cloned without --recurse-submodules:
+git submodule update --init --recursive
+
+# 2. Install all dependencies (contracts, npm workspaces, CRE workflows)
 make install
 
-# 2. Build and test contracts
+# 3. Build and test contracts (52 tests including fuzz + invariant)
 make build
 make test-contracts
 
-# 3. Start a local Anvil chain (terminal 1)
+# 4. Start a local Anvil chain (terminal 1)
 make anvil
 
-# 4. Deploy contracts to Anvil (terminal 2)
+# 5. Deploy contracts to Anvil (terminal 2)
 make deploy-local
 make deploy-verify     # confirm escrow balance + roles
 
-# 5. Start backend services (terminal 3)
+# 6. Start backend services (terminal 3)
 make services
 
-# 6. Simulate CRE workflows (terminal 2)
-make simulate-wf004    # EHR cross-check + EVM reads (needs services + Anvil)
+# 7. Simulate CRE workflows (terminal 2)
 make simulate-wf001    # full prior-auth flow (needs services + Anvil)
 make simulate-wf002    # consent cascade via HTTP trigger
-make simulate-wf003    # compliance gate (needs TX_HASH from on-chain event)
+make simulate-wf004    # EHR cross-check + EVM reads (needs services + Anvil)
 make simulate-wf005    # AES-GCM encryption showcase
 make simulate-wf006    # medication prior-auth
-make simulate-wf007    # transfer settlement (needs TX_HASH from submitClaim)
 make simulate-wf008    # HTTP prior-auth via signed payload
-make simulate          # run cron-triggered workflows sequentially
+make simulate          # run all cron-triggered workflows sequentially
 
-# 7. Run the E2E demo (3 scenarios: approve, deny, challenge)
+# Log-trigger workflows (require a TX_HASH from an on-chain event):
+make submit-wf003-claim                  # emit ProofEvaluated event
+make simulate-wf003 TX_HASH=0x...        # compliance gate
+make submit-wf007-claim                  # emit ClaimSubmitted event
+make simulate-wf007 TX_HASH=0x...        # transfer settlement
+
+# 8. Run the E2E demo (3 scenarios: approve, deny, challenge)
 make demo
 ```
+
+> Run `make help` to see all available targets.
 
 ## Repository Structure
 
 ```
-ProofPA/
+EASEeHealth/
 ├── contracts/                    Solidity contracts (Foundry)
 │   ├── src/
 │   │   ├── MockUSDC.sol              ERC-20 mock USDC (6 decimals)
