@@ -1569,3 +1569,10 @@ The Chainlink CRE workshop demonstrated a `ConfidentialHTTPSendRequester` callba
 | `http-actions` capability | `1.0.0-alpha` | Has `SendRequester` + `consensusIdenticalAggregation` (used in WF-001) |
 
 See `docs/MVP_DECISIONS.md` for the full list of frozen architecture decisions.
+
+## Acknowledgments
+
+- **[Synthea](https://github.com/synthetichealth/synthea)** — Synthetic patient, provider, payer, and claims data used throughout this project follows the [Synthea CSV format](https://github.com/synthetichealth/synthea/wiki/CSV-File-Data-Dictionary). Synthea is an open-source synthetic patient generator developed by The MITRE Corporation under an Apache 2.0 license. All healthcare data in `data/synthea/` is fictional — no real PHI.
+- **[Chainlink CRE](https://chain.link/)** — Compute Runtime Environment SDK and CLI for decentralized workflow orchestration.
+- **[OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)** — Solidity contract libraries for role-based access control and ERC-20 token standards.
+- **[Foundry](https://github.com/foundry-rs/foundry)** — Solidity development toolchain (forge, anvil, cast).
