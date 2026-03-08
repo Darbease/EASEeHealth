@@ -4,6 +4,29 @@
 
 ---
 
+> ### Chainlink Code Guide
+>
+> All Chainlink CRE workflow code lives in **[`ProofPACRE/`](ProofPACRE/)**. Each of the 8 workflows has its own directory with a `main.ts` entry point:
+>
+> | Workflow | Entry Point | Trigger | Chainlink Capabilities Used |
+> |----------|------------|---------|----------------------------|
+> | WF-001 Prior Auth Decision | [`ProofPACRE/wf-001-prior-auth-decision/main.ts`](ProofPACRE/wf-001-prior-auth-decision/main.ts) | Cron | CronCapability, HTTPClient, ConfidentialHTTPClient, EVMClient |
+> | WF-002 Consent Revocation | [`ProofPACRE/wf-002-consent-revocation/main.ts`](ProofPACRE/wf-002-consent-revocation/main.ts) | HTTP | HTTPCapability, ConfidentialHTTPClient, EVMClient |
+> | WF-003 Challenge Resolution | [`ProofPACRE/wf-003-challenge-resolution/main.ts`](ProofPACRE/wf-003-challenge-resolution/main.ts) | Log (`ProofEvaluated`) | ConfidentialHTTPClient, EVMClient |
+> | WF-004 Reconciliation Monitor | [`ProofPACRE/wf-004-reconciliation-monitor/main.ts`](ProofPACRE/wf-004-reconciliation-monitor/main.ts) | Cron | CronCapability, ConfidentialHTTPClient, EVMClient |
+> | WF-005 Encrypted Credential Audit | [`ProofPACRE/wf-005-encrypted-credential-audit/main.ts`](ProofPACRE/wf-005-encrypted-credential-audit/main.ts) | Cron | CronCapability, ConfidentialHTTPClient, EVMClient |
+> | WF-006 Medication Payment Verification | [`ProofPACRE/wf-006-medication-payment-verification/main.ts`](ProofPACRE/wf-006-medication-payment-verification/main.ts) | Cron | CronCapability, ConfidentialHTTPClient, EVMClient |
+> | WF-007 Claim Transfer Settlement | [`ProofPACRE/wf-007-claim-transfer-settlement/main.ts`](ProofPACRE/wf-007-claim-transfer-settlement/main.ts) | Log (`ClaimSubmitted`) | ConfidentialHTTPClient, EVMClient |
+> | WF-008 HTTP Prior Auth | [`ProofPACRE/wf-008-http-prior-auth/main.ts`](ProofPACRE/wf-008-http-prior-auth/main.ts) | HTTP | HTTPCapability, HTTPClient, ConfidentialHTTPClient, EVMClient |
+>
+> **CRE config**: [`ProofPACRE/project.yaml`](ProofPACRE/project.yaml) (targets, RPC, experimental chains) · [`ProofPACRE/secrets.yaml`](ProofPACRE/secrets.yaml) (secret refs)
+>
+> **Smart contracts** receiving DON-signed transactions (gated by `WORKFLOW_ROLE`): [`contracts/src/`](contracts/src/) — `ClaimDecisionRegistry.sol`, `ClaimEscrow.sol`, `ConsentRegistry.sol`, `PolicyRegistry.sol`
+>
+> **All 8 workflows use `@chainlink/cre-sdk@1.1.4`** with all 3 CRE capability types: HTTPClient (public consensus reads), ConfidentialHTTPClient (AES-GCM encrypted enclave calls), and EVMClient (on-chain reads + DON-signed writes). Three trigger types are demonstrated: Cron, HTTP, and Log.
+
+---
+
 ## The Problem
 
 Prior authorization is the most hated process in American healthcare.
