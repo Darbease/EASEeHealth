@@ -1,4 +1,4 @@
-# ProofPA System Wiremap
+# EASE eHealth System Wiremap
 
 ```mermaid
 flowchart LR

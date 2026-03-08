@@ -8,7 +8,7 @@
 # ==========================================================================
 staging-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF001-PriorAuthDecision-staging"
+    workflow-name: "EASEeHealth-WF001-PriorAuthDecision-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
@@ -17,7 +17,7 @@ staging-settings:
 # ==========================================================================
 production-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF001-PriorAuthDecision-production"
+    workflow-name: "EASEeHealth-WF001-PriorAuthDecision-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"

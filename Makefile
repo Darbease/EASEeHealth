@@ -130,7 +130,7 @@ deploy-verify: ## Verify deployment — check escrow balance and CRE signer role
 
 # ─── Services ────────────────────────────────────────────────────────
 services: ## Start all 6 backend services (foreground, Ctrl+C to stop)
-	@echo "Starting ProofPA services on ports 3001-3006..."
+	@echo "Starting EASE eHealth services on ports 3001-3006..."
 	bash infra/deploy/start-services.sh
 
 services-stop: ## Stop all background services

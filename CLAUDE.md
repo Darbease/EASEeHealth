@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-ProofPA **MVP implementation is complete** (architecture locked March 4, 2026). All contracts, services, CRE workflows, and the demo dashboard are implemented and passing. See `docs/MVP_DECISIONS.md` for frozen decisions — any deviation requires updating that file with date and rationale.
+EASE eHealth **MVP implementation is complete** (architecture locked March 4, 2026). All contracts, services, CRE workflows, and the demo dashboard are implemented and passing. See `docs/MVP_DECISIONS.md` for frozen decisions — any deviation requires updating that file with date and rationale.
 
 ## Build Commands
 

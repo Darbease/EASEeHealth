@@ -1,6 +1,6 @@
 # Contracts
 
-Solidity implementation for ProofPA onchain state and payouts.
+Solidity implementation for EASE eHealth onchain state and payouts.
 
 - `src/` contract sources
 - `script/` deployment and role setup

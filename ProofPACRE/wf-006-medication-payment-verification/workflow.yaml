@@ -8,7 +8,7 @@
 # ==========================================================================
 staging-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF006-MedicationPaymentVerification-staging"
+    workflow-name: "EASEeHealth-WF006-MedicationPaymentVerification-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
@@ -17,7 +17,7 @@ staging-settings:
 # ==========================================================================
 production-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF006-MedicationPaymentVerification-production"
+    workflow-name: "EASEeHealth-WF006-MedicationPaymentVerification-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"

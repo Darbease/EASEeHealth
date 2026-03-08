@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Start all ProofPA backend services
+# Start all EASE eHealth backend services
 # Usage: ./start-services.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-echo "Starting ProofPA services..."
+echo "Starting EASE eHealth services..."
 
 cd "$ROOT_DIR"
 

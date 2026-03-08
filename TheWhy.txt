@@ -1,4 +1,4 @@
-ProofPA — Judges Briefing
+EASE eHealth — Judges Briefing
 
   The Problem We're Solving
 
@@ -16,14 +16,14 @@ ProofPA — Judges Briefing
   time, and the entire process runs on phone calls and PDFs.
 
   ---
-  How ProofPA Mirrors — Then Surpasses — The Traditional System
+  How EASE eHealth Mirrors — Then Surpasses — The Traditional System
 
   The Traditional Flow
 
   Provider → Fax/Portal → Payer Review Queue → Manual Clinical Review
   → Phone Call Back → Maybe Approved → Paper Check 30 Days Later
 
-  The ProofPA Flow
+  The EASE eHealth Flow
 
   Provider Portal → On-Chain Claim Submission → CRE Workflow Fires
   → Automated Consent + Policy + Clinical Verification
@@ -32,7 +32,7 @@ ProofPA — Judges Briefing
   We didn't throw away the traditional model. We mapped every actor and every step to a cryptographic equivalent:
 
   ┌─────────────────┬────────────────────────────────────────────────────────┬───────────────────────────────────────┐
-  │  Traditional    │                   ProofPA Equivalent                   │             What Changes              │
+  │  Traditional    │                   EASE eHealth Equivalent                   │             What Changes              │
   │     System      │                                                        │                                       │
   ├─────────────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────┤
   │ Fax/portal      │ POST /v1/prior-auth/submit → submitClaim() on-chain    │ Submission is atomic and timestamped  │
@@ -62,7 +62,7 @@ ProofPA — Judges Briefing
 
   The key insight: we didn't automate paperwork, we replaced trust assumptions with verification. The traditional system
   trusts that the provider's credential is valid, that consent was really given, that the procedure is really covered.
-  ProofPA verifies each of those claims against on-chain state and signed attestations before any money moves.
+  EASE eHealth verifies each of those claims against on-chain state and signed attestations before any money moves.
 
   ---
   Why CRE Is The Right Orchestration Layer
@@ -102,7 +102,7 @@ ProofPA — Judges Briefing
 
   This solves a real regulatory problem: HIPAA requires that protected health information be encrypted in transit and
   accessible only to authorized parties. Traditional prior auth sends PHI over fax machines and unencrypted portal
-  uploads. ProofPA's confidential HTTP calls are more HIPAA-compliant than the system they replace.
+  uploads. EASE eHealth's confidential HTTP calls are more HIPAA-compliant than the system they replace.
 
   We use 3 confidential calls per workflow for the sensitive operations (EHR data fetch, proof evaluation, callback
   notification) while using plain HTTP with consensus for non-sensitive operations (policy lookup). This is a deliberate
@@ -153,9 +153,9 @@ ProofPA — Judges Briefing
 
   Cron-triggered workflows are ideal for:
   - Proactive monitoring — WF-004 runs every 30s looking for stuck claims (state = PROOF_PENDING for >15 minutes).
-  Traditional systems discover stuck claims when someone complains. ProofPA discovers them automatically.
+  Traditional systems discover stuck claims when someone complains. EASE eHealth discovers them automatically.
   - Periodic audits — WF-005 runs an encrypted credential audit cycle, verifying provider credentials haven't expired.
-  Traditional systems check credentials at enrollment time and maybe annually. ProofPA checks continuously.
+  Traditional systems check credentials at enrollment time and maybe annually. EASE eHealth checks continuously.
   - Batch settlement — WF-001 and WF-006 process the next pending claim each cycle, mimicking the traditional "work the
   queue" model but at machine speed.
 
@@ -261,7 +261,7 @@ ProofPA — Judges Briefing
   denial was wrong)
   - System-wide: $528 billion in administrative costs annually (31% of US healthcare spending)
 
-  What ProofPA Costs
+  What EASE eHealth Costs
 
   - On-chain gas: ~120K gas per claim submission + ~500K gas per workflow execution = ~$0.02-0.05 per claim on Base
   Sepolia (L2 fees)
@@ -327,7 +327,7 @@ ProofPA — Judges Briefing
   ---
   What We're Really Demonstrating
 
-  ProofPA isn't just "prior auth on a blockchain." It's a proof of concept for a new trust architecture in healthcare:
+  EASE eHealth isn't just "prior auth on a blockchain." It's a proof of concept for a new trust architecture in healthcare:
 
   1. Verification replaces trust — Instead of trusting that a provider's credentials are valid, we verify it. Instead of
   trusting that consent was given, we check on-chain. Instead of trusting that the payer applied the policy correctly, we
@@ -347,4 +347,4 @@ ProofPA — Judges Briefing
   verification guarantees.
 
   The $528 billion question isn't whether healthcare administration can be automated. It's whether automation can be
-  trusted by all parties simultaneously. CRE makes that possible. ProofPA proves it works.
+  trusted by all parties simultaneously. CRE makes that possible. EASE eHealth proves it works.

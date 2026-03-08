@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deploy ProofPA contracts to Base Sepolia (or local Anvil)
+# Deploy EASE eHealth contracts to Base Sepolia (or local Anvil)
 # Usage: ./deploy-contracts.sh [--local]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

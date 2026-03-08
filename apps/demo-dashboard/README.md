@@ -1,8 +1,8 @@
-# ProofPA Demo Dashboard
+# EASE eHealth Demo Dashboard
 
 Port: **3000** | Next.js 16 + React 19 + Tailwind CSS + TanStack React Query
 
-Interactive web dashboard for demonstrating the ProofPA prior authorization system.
+Interactive web dashboard for demonstrating the EASE eHealth prior authorization system.
 
 ## Features
 

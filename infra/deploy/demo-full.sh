@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ProofPA Full Demo Orchestrator
+# EASE eHealth Full Demo Orchestrator
 # Starts Anvil, deploys contracts, launches services, runs demo scenarios.
 # Usage: ./infra/deploy/demo-full.sh  OR  make demo-full
 
@@ -26,7 +26,7 @@ trap cleanup EXIT
 
 # ─── 1. Start Anvil ──────────────────────────────────────────────────
 echo "╔══════════════════════════════════════════╗"
-echo "║     ProofPA Full Demo                    ║"
+echo "║     EASE eHealth Full Demo                    ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 

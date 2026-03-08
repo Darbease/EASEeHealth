@@ -7,7 +7,7 @@
 # ==========================================================================
 staging-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF004-ReconciliationMonitor-staging"
+    workflow-name: "EASEeHealth-WF004-ReconciliationMonitor-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
@@ -16,7 +16,7 @@ staging-settings:
 # ==========================================================================
 production-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF004-ReconciliationMonitor-production"
+    workflow-name: "EASEeHealth-WF004-ReconciliationMonitor-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"

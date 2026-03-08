@@ -1,4 +1,4 @@
-# Technical Architecture Specification: ProofPA
+# Technical Architecture Specification: EASE eHealth
 
 - Document status: Draft v0.1
 - Date: March 3, 2026
@@ -6,7 +6,7 @@
 - Scope: Technical architecture for MVP (prior auth + proof-based payout)
 
 ## 1. Purpose
-This document defines implementation architecture for ProofPA without changing PRD scope. It specifies smart contracts, APIs, CRE workflows, proof interfaces, security controls, and delivery constraints for a hackathon-ready MVP.
+This document defines implementation architecture for EASE eHealth without changing PRD scope. It specifies smart contracts, APIs, CRE workflows, proof interfaces, security controls, and delivery constraints for a hackathon-ready MVP.
 
 ## 2. MVP Architecture Decisions
 1. Execution network: EVM L2 testnet (default: Base Sepolia).

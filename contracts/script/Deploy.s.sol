@@ -10,7 +10,7 @@ import {ClaimDecisionRegistry} from "../src/ClaimDecisionRegistry.sol";
 import {ClaimEscrow} from "../src/ClaimEscrow.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title Deploy — Deploys all ProofPA contracts, grants roles, seeds demo data
+/// @title Deploy — Deploys all EASE eHealth contracts, grants roles, seeds demo data
 /// @notice Uses HelperConfig for network-aware configuration.
 ///         Anvil (31337): deterministic accounts, no env vars needed.
 ///         Sepolia / Tenderly fork (11155111): reads DEPLOYER_PRIVATE_KEY from env.

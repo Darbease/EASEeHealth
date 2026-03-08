@@ -8,7 +8,7 @@
 # ==========================================================================
 staging-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF003-ChallengeResolution-staging"
+    workflow-name: "EASEeHealth-WF003-ChallengeResolution-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
@@ -17,7 +17,7 @@ staging-settings:
 # ==========================================================================
 production-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF003-ChallengeResolution-production"
+    workflow-name: "EASEeHealth-WF003-ChallengeResolution-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"

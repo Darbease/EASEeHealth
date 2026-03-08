@@ -1,13 +1,13 @@
 # Product Requirements Document (PRD)
 
 ## Product
-- Name: ProofPA (working title)
+- Name: EASE eHealth (working title)
 - Tagline: Privacy-preserving prior authorization and claim payout using cryptographic proof
 - Version: v0.1 (Hackathon + MVP)
 - Date: March 3, 2026
 
 ## 1. Executive Summary
-ProofPA is a healthcare insurance protocol that allows payers to approve and fund care based on proof of medical necessity and policy compliance, without exposing unrelated patient data. The system combines verifiable credentials, selective disclosure, zero-knowledge proofs, and onchain settlement orchestration.
+EASE eHealth is a healthcare insurance protocol that allows payers to approve and fund care based on proof of medical necessity and policy compliance, without exposing unrelated patient data. The system combines verifiable credentials, selective disclosure, zero-knowledge proofs, and onchain settlement orchestration.
 
 The initial product wedge is prior authorization and pre-approval payout, not full claims replacement. Chainlink Runtime Environment (CRE) is the orchestration backbone connecting provider systems, policy checks, proof services, and onchain settlement.
 

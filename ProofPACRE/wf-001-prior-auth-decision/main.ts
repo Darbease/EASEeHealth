@@ -148,7 +148,7 @@ export type Config = {
 // ---------------------------------------------------------------------------
 // Handler: onPriorAuthCron
 // ---------------------------------------------------------------------------
-// Cron-triggered handler that demonstrates the full ProofPA prior-auth flow
+// Cron-triggered handler that demonstrates the full EASE eHealth prior-auth flow
 // using all 3 CRE capabilities: HTTPClient, ConfidentialHTTPClient, EVMClient.
 //
 //   1. [HTTP]       Fetch active policy from policy-service

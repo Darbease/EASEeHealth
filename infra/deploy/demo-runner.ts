@@ -1,5 +1,5 @@
 /**
- * ProofPA Demo Runner
+ * EASE eHealth Demo Runner
  *
  * Runs all 3 demo scenarios against running services.
  * Usage: npx tsx infra/deploy/demo-runner.ts
@@ -157,7 +157,7 @@ async function scenarioC() {
 
 async function main() {
   console.log("\n╔══════════════════════════════════════════╗")
-  console.log("║     ProofPA MVP Demo Runner              ║")
+  console.log("║     EASE eHealth MVP Demo Runner              ║")
   console.log("╚══════════════════════════════════════════╝\n")
 
   // Check services are up

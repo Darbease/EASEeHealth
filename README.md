@@ -1,4 +1,4 @@
-# ProofPA
+# EASE eHealth
 
 **Privacy-preserving prior authorization and instant on-chain settlement using Chainlink CRE**
 
@@ -20,11 +20,11 @@ The core dysfunction: every party maintains their own version of truth, nobody c
 
 ---
 
-## How ProofPA Fixes It
+## How EASE eHealth Fixes It
 
 We mapped every actor and every step in traditional prior auth to a cryptographic equivalent:
 
-| Traditional System | ProofPA Equivalent | What Changes |
+| Traditional System | EASE eHealth Equivalent | What Changes |
 |---|---|---|
 | Fax/portal submission | `POST /submit` + `submitClaim()` on-chain | Submission is atomic and timestamped — no lost faxes |
 | Patient consent form (paper) | `ConsentRegistry.isConsentActive()` on-chain | Consent is verifiable in real time, revocable instantly |
@@ -34,7 +34,7 @@ We mapped every actor and every step in traditional prior auth to a cryptographi
 | Paper check (30 days) | `ClaimEscrow.releasePayout()` — ERC-20 transfer | Settlement is instant — seconds, not weeks |
 | Appeal process (months) | `challengeClaim()` + `resolveChallenge()` — state machine enforced | Disputes are structured — payout freezes until resolution |
 
-**The key insight**: we didn't automate paperwork — we replaced trust assumptions with verification. The traditional system *trusts* that the provider's credential is valid, that consent was really given, that the procedure is really covered. ProofPA *verifies* each of those claims against on-chain state and signed attestations before any money moves.
+**The key insight**: we didn't automate paperwork — we replaced trust assumptions with verification. The traditional system *trusts* that the provider's credential is valid, that consent was really given, that the procedure is really covered. EASE eHealth *verifies* each of those claims against on-chain state and signed attestations before any money moves.
 
 ---
 
@@ -100,11 +100,11 @@ Each scenario shows live on-chain state (claim state machine, payout status, pro
 
 ## System Architecture Overview
 
-ProofPA connects **provider portals** to **six backend services** to **eight Chainlink CRE workflows** to **five Solidity contracts** on-chain. The CRE workflows are the orchestration brain — they read and write to both off-chain services (via HTTP) and on-chain contracts (via EVMClient), all executing inside a decentralized oracle network (DON). All ConfidentialHTTPClient calls use **AES-GCM output encryption** (`encryptOutput: true`) to ensure response payloads are encrypted end-to-end through the DON.
+EASE eHealth connects **provider portals** to **six backend services** to **eight Chainlink CRE workflows** to **five Solidity contracts** on-chain. The CRE workflows are the orchestration brain — they read and write to both off-chain services (via HTTP) and on-chain contracts (via EVMClient), all executing inside a decentralized oracle network (DON). All ConfidentialHTTPClient calls use **AES-GCM output encryption** (`encryptOutput: true`) to ensure response payloads are encrypted end-to-end through the DON.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                              PROOFPA SYSTEM WIREMAP                                 │
+│                           EASE eHealth SYSTEM WIREMAP                                │
 │                                                                                     │
 │  ┌──────────────┐                                                                   │
 │  │   Provider   │                                                                   │
@@ -650,7 +650,7 @@ TRIGGER: EVMClient.logTrigger() on ProofEvaluated event
 
 > **As a payer**, I want an independent monitor that verifies cross-contract consistency between `ClaimDecisionRegistry` and `ClaimEscrow`, and cross-references against off-chain EHR records, so that I can trust the settlement layer operates correctly and detect reconciliation gaps.
 
-The reconciliation workflow fetches **outstanding BILLED claims from the EHR system** (Synthea-format data served by provider-adapter-api) via ConfidentialHTTPRequest, computes deterministic `claim_id` hashes from off-chain fields, and cross-checks each against on-chain state. This is the **key demo of ProofPA's value** — showing traditional claims stuck in BILLED status for weeks while the same claims are already settled on-chain in under 120 seconds.
+The reconciliation workflow fetches **outstanding BILLED claims from the EHR system** (Synthea-format data served by provider-adapter-api) via ConfidentialHTTPRequest, computes deterministic `claim_id` hashes from off-chain fields, and cross-checks each against on-chain state. This is the **key demo of EASE eHealth's value** — showing traditional claims stuck in BILLED status for weeks while the same claims are already settled on-chain in under 120 seconds.
 
 Falls back to legacy on-chain-only mode if the EHR is unreachable.
 
@@ -699,7 +699,7 @@ TRIGGER: CronCapability fires every 30s (staging) / 15min (production)
  │  For each outstanding EHR claim, reads on-chain state:
  │
  │  Cross-reference findings:
- │    - state == NONE:  "Claim not on-chain — candidate for ProofPA submission"
+ │    - state == NONE:  "Claim not on-chain — candidate for EASE eHealth submission"
  │    - state == PAID:  "RECONCILIATION FINDING — settled on-chain but EHR
  │                       still shows $7,275 outstanding"
  │    - state == PROOF_PENDING, age > SLO: "SLO VIOLATION"
@@ -738,7 +738,7 @@ TRIGGER: CronCapability fires every 30s (staging) / 15min (production)
 
  KEY DEMO INSIGHT:
    Traditional system: Maria Garcia's $38K stent claim sits BILLED for 30-90 days.
-   ProofPA: Same claim settled on-chain in <120 seconds. WF-004 detects the gap.
+   EASE eHealth: Same claim settled on-chain in <120 seconds. WF-004 detects the gap.
 ```
 
 ---
@@ -1475,7 +1475,7 @@ The `data/synthea/` directory contains realistic synthetic healthcare data in [S
 
 **Key demo claims (outstanding):**
 
-| Patient | Procedure | Total Cost | Outstanding | ProofPA Mapping |
+| Patient | Procedure | Total Cost | Outstanding | EASE eHealth Mapping |
 |---------|-----------|-----------|-------------|-----------------|
 | Maria Garcia | Coronary stent ($38K) | $48,500 | $7,275 | WF-001 happy path → settled in <120s |
 | William O'Brien | PCI ($52K) | $92,000 | $4,600 | Medicare prior auth → instant settlement |
@@ -1518,7 +1518,7 @@ make clean               # remove build artifacts
 - **ZK deferred** — MVP uses signature-based verification (physician JWS attestation, payer policy hash signature, CRE decision report signature). ZK proof circuits are post-hackathon.
 - **All 3 CRE capabilities** — HTTPClient for public consensus reads, ConfidentialHTTPClient for secret-injected enclave calls, EVMClient for on-chain contract interaction. This is the first project to use all three in a single healthcare workflow.
 - **AES-GCM output encryption** — All 16 ConfidentialHTTPClient calls across WF-001/002/003/004/005 use `encryptOutput: true`, ensuring HTTP response payloads are AES-GCM encrypted end-to-end through the DON network. Every workflow now fetches Synthea data via encrypted calls: WF-001 fetches EHR claims, WF-002 fetches payer enrollment, WF-003 fetches EHR challenge context, WF-004 cross-checks outstanding claims, and WF-005 fetches provider registry data (5 encrypted calls, at CRE limit).
-- **Synthea-format EHR data** — Realistic synthetic healthcare data (patients, encounters, procedures, claims, payers, providers) in [Synthea CSV format](https://github.com/synthetichealth/synthea/wiki/CSV-File-Data-Dictionary) is loaded at service startup and served via REST endpoints. CRE workflows fetch this data via ConfidentialHTTPRequest to cross-check against on-chain state, demonstrating how ProofPA integrates with existing EHR/billing systems.
+- **Synthea-format EHR data** — Realistic synthetic healthcare data (patients, encounters, procedures, claims, payers, providers) in [Synthea CSV format](https://github.com/synthetichealth/synthea/wiki/CSV-File-Data-Dictionary) is loaded at service startup and served via REST endpoints. CRE workflows fetch this data via ConfidentialHTTPRequest to cross-check against on-chain state, demonstrating how EASE eHealth integrates with existing EHR/billing systems.
 - **CRE log privacy** — Workflow `runtime.log()` calls never emit PHI. Logs reference only claim/consent hashes, procedure codes (e.g., `PROC_KNEE_MRI`), predicate pass/fail counts, provider fixture IDs, and on-chain state names. Clinical narrative (patient names, diagnoses, dollar amounts) stays in the service responses — parsed for business logic but never echoed to DON logs.
 - **Network**: Base Sepolia (with local Anvil for development via experimental-chains)
 - **Token**: ERC-20 mock USDC (6 decimals)

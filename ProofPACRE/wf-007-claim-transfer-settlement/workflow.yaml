@@ -9,7 +9,7 @@
 # ==========================================================================
 staging-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF007-ClaimTransferSettlement-staging"
+    workflow-name: "EASEeHealth-WF007-ClaimTransferSettlement-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
@@ -18,7 +18,7 @@ staging-settings:
 # ==========================================================================
 production-settings:
   user-workflow:
-    workflow-name: "ProofPA-WF007-ClaimTransferSettlement-production"
+    workflow-name: "EASEeHealth-WF007-ClaimTransferSettlement-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"

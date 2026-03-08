@@ -241,7 +241,7 @@ export const onReconciliationCheck = (
 
     runtime.log(`WF-004: Checking EHR claim ${ehrClaimId.substring(0, 16)}... — status BILLED`);
 
-    // Compute the deterministic ProofPA claim_id from off-chain fields.
+    // Compute the deterministic EASE eHealth claim_id from off-chain fields.
     // This mirrors the same keccak256 used in provider-adapter-api and WF-001.
     // For the demo, we use the off-chain claim fields to derive a matching on-chain ID.
     const payerId = offchainClaim["Primary Patient Insurance ID"] as string ?? "";
@@ -270,7 +270,7 @@ export const onReconciliationCheck = (
     // ---- Step 4: Cross-reference off-chain vs on-chain ----
     if (stateNum === 0) {
       // NONE — claim not yet submitted on-chain. Expected for traditional claims.
-      runtime.log(`WF-004: Claim ${ehrClaimId.substring(0, 16)}... NOT on-chain — candidate for ProofPA submission`);
+      runtime.log(`WF-004: Claim ${ehrClaimId.substring(0, 16)}... NOT on-chain — candidate for EASE eHealth submission`);
       findings.push({
         ehr_claim_id: ehrClaimId,
         ehr_status: "BILLED",
@@ -367,7 +367,7 @@ export const onReconciliationCheck = (
   runtime.log(`WF-004: Reconciliation complete — ${reconciled} EHR claims checked, ${settledOnChain} already settled on-chain, ${stuckClaims} SLO violations, ${mismatches} mismatches — ${allClear ? "ALL CLEAR" : "ACTION REQUIRED"}`);
 
   if (settledOnChain > 0) {
-    runtime.log(`WF-004: ProofPA IMPACT — ${settledOnChain} claims already settled on-chain in <120s that EHR still shows as outstanding (traditional: 30-90 days)`);
+    runtime.log(`WF-004: EASE eHealth IMPACT — ${settledOnChain} claims already settled on-chain in <120s that EHR still shows as outstanding (traditional: 30-90 days)`);
   }
 
   return JSON.stringify({

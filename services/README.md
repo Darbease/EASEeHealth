@@ -1,6 +1,6 @@
 # Services
 
-Offchain API and decisioning components for ProofPA.
+Offchain API and decisioning components for EASE eHealth.
 
 Core services:
 - provider-adapter-api

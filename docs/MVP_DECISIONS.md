@@ -1,4 +1,4 @@
-# ProofPA MVP Decisions (Step 1 Lock)
+# EASE eHealth MVP Decisions (Step 1 Lock)
 
 Date locked: March 4, 2026
 Owner: Product and Engineering
