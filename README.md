@@ -1248,28 +1248,21 @@ How many of each CRE capability type each workflow uses (and the CRE platform li
 
 ## Prerequisites
 
-- **Node.js** >= 18 and **npm** (for services and shared packages)
-- **Bun** >= 1.0 (for CRE workflows) — `curl -fsSL https://bun.sh/install | bash`
-- **Foundry** (for Solidity contracts) — `curl -L https://foundry.paradigm.xyz | bash && foundryup`
-- **Chainlink CRE CLI** — `curl -sSL https://cre-cli.chainlink.io/install | bash`
-
-Verify everything is installed:
-
-```bash
-node --version    # v18+
-bun --version     # 1.0+
-forge --version   # any recent
-~/.cre/bin/cre version  # v1.2+
-```
-
-## Prerequisites
-
 | Tool | Version | Install |
 |------|---------|---------|
 | **Node.js** | >= 18 | [nodejs.org](https://nodejs.org/) |
 | **Foundry** (forge, anvil, cast) | >= 1.0 | `curl -L https://foundry.paradigm.xyz \| bash && foundryup` |
 | **Bun** | >= 1.0 | `curl -fsSL https://bun.sh/install \| bash` |
-| **Chainlink CRE CLI** | latest | `npx --yes @aspect-build/cli install && cre install` |
+| **Chainlink CRE CLI** | latest | `curl -sSL https://cre-cli.chainlink.io/install \| bash` |
+
+Verify everything is installed:
+
+```bash
+node --version        # v18+
+bun --version         # 1.0+
+forge --version       # any recent
+~/.cre/bin/cre help   # should print usage
+```
 
 ## Quick Start
 
@@ -1278,7 +1271,16 @@ forge --version   # any recent
 ```bash
 git clone --recurse-submodules https://github.com/Darbease/EASEeHealth.git
 cd EASEeHealth
-make demo-full    # anvil → deploy → services → demo → CRE simulate
+make install          # contracts (forge), npm workspaces, CRE workflows (bun)
+make demo-full        # anvil → deploy → services → demo → CRE simulate
+```
+
+This starts Anvil, deploys all 5 contracts, launches 6 backend services, runs the demo scenarios, and broadcasts CRE workflows. Press `Ctrl+C` to stop everything.
+
+To also launch the **dashboard** (separate terminal):
+
+```bash
+make dashboard        # Next.js on http://localhost:3000
 ```
 
 ### Step by step
@@ -1291,8 +1293,9 @@ cd EASEeHealth
 # If you already cloned without --recurse-submodules:
 git submodule update --init --recursive
 
-# 2. Install all dependencies (contracts, npm workspaces, CRE workflows)
+# 2. Install all dependencies (contracts, npm workspaces, CRE workflows, dashboard)
 make install
+cd apps/demo-dashboard && npm install && cd ../..
 
 # 3. Build and test contracts (52 tests including fuzz + invariant)
 make build
@@ -1308,7 +1311,10 @@ make deploy-verify     # confirm escrow balance + roles
 # 6. Start backend services (terminal 3)
 make services
 
-# 7. Simulate CRE workflows (terminal 2)
+# 7. Start the dashboard (terminal 4)
+make dashboard         # http://localhost:3000
+
+# 8. Simulate CRE workflows (terminal 2)
 make simulate-wf001    # full prior-auth flow (needs services + Anvil)
 make simulate-wf002    # consent cascade via HTTP trigger
 make simulate-wf004    # EHR cross-check + EVM reads (needs services + Anvil)
@@ -1323,7 +1329,7 @@ make simulate-wf003 TX_HASH=0x...        # compliance gate
 make submit-wf007-claim                  # emit ClaimSubmitted event
 make simulate-wf007 TX_HASH=0x...        # transfer settlement
 
-# 8. Run the E2E demo (3 scenarios: approve, deny, challenge)
+# 9. Run the E2E demo (3 scenarios: approve, deny, challenge)
 make demo
 ```
 

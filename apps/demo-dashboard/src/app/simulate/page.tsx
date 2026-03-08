@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useWorkflowStream, colorize } from "@/lib/useWorkflowStream";
 
@@ -22,15 +22,21 @@ const WORKFLOWS = [
     id: "wf-002-consent-revocation",
     name: "WF-002: Consent Revocation",
     description:
-      "Revokes consent on-chain and flags any pending claims for review.",
-    trigger: "cron",
+      "HTTP trigger — revokes consent on-chain, cascade-challenges affected claims, cancels pending payouts.",
+    trigger: "http",
+    defaultPayload: JSON.stringify({
+      consent_id: "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
+      reason_code: 1,
+      affected_claim_id: "0x0101010101010101010101010101010101010101010101010101010101010101",
+    }),
   },
   {
     id: "wf-003-challenge-resolution",
     name: "WF-003: Challenge Resolution",
     description:
-      "Challenge lifecycle — poll challenges, verify claim state, challengeClaim, resolveChallenge, cancelPayout, encrypted callback.",
-    trigger: "cron",
+      "Log trigger (ProofEvaluated) — automated compliance gate, auto-challenges risky claims. Requires a TX hash from setProofResult.",
+    trigger: "log",
+    requiresTxHash: true,
   },
   {
     id: "wf-004-reconciliation-monitor",
@@ -57,8 +63,9 @@ const WORKFLOWS = [
     id: "wf-007-claim-transfer-settlement",
     name: "WF-007: Claim Transfer Settlement",
     description:
-      "Event-driven transfer settlement — fires on ClaimSubmitted event via EVMClient.logTrigger(). No polling.",
+      "Log trigger (ClaimSubmitted) — reactive settlement of transfer claims. Requires a TX hash from submitClaim.",
     trigger: "log",
+    requiresTxHash: true,
   },
   {
     id: "wf-008-http-prior-auth",
@@ -66,6 +73,15 @@ const WORKFLOWS = [
     description:
       "On-demand prior auth via signed HTTP request — fires immediately with full payload. No EHR fetch needed.",
     trigger: "http",
+    defaultPayload: JSON.stringify({
+      claim_id: "0x0808080808080808080808080808080808080808080808080808080808080808",
+      payer_id: "payer-demo-001",
+      procedure_code: "PROC_CARDIAC_CT",
+      requested_amount: "38000",
+      consent_id: "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
+      policy_hash: "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      service_date: "2026-03-08",
+    }),
   },
 ];
 
@@ -73,6 +89,7 @@ export default function SimulatePage() {
   const { logs, isRunning, activeWorkflow, startWorkflow, stop } =
     useWorkflowStream();
   const logEndRef = useRef<HTMLDivElement>(null);
+  const [txHashInputs, setTxHashInputs] = useState<Record<string, string>>({});
 
   // Auto-scroll
   const prevCount = useRef(0);
@@ -83,6 +100,18 @@ export default function SimulatePage() {
       50
     );
   }
+
+  const handleSimulate = (wf: typeof WORKFLOWS[number]) => {
+    if (wf.trigger === "http" && wf.defaultPayload) {
+      startWorkflow(wf.id, { httpPayload: wf.defaultPayload });
+    } else if (wf.trigger === "log" && wf.requiresTxHash) {
+      const txHash = txHashInputs[wf.id];
+      if (!txHash || !txHash.startsWith("0x")) return;
+      startWorkflow(wf.id, { evmTxHash: txHash, evmEventIndex: "0" });
+    } else {
+      startWorkflow(wf.id);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -119,9 +148,20 @@ export default function SimulatePage() {
             <p className="mt-2 text-sm text-[var(--text-muted)]">
               {wf.description}
             </p>
+            {wf.requiresTxHash && (
+              <input
+                type="text"
+                placeholder="TX hash (0x...)"
+                value={txHashInputs[wf.id] ?? ""}
+                onChange={(e) =>
+                  setTxHashInputs((prev) => ({ ...prev, [wf.id]: e.target.value }))
+                }
+                className="mt-3 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm font-mono text-[var(--text)] placeholder:text-[var(--text-muted)]"
+              />
+            )}
             <button
-              onClick={() => startWorkflow(wf.id)}
-              disabled={isRunning}
+              onClick={() => handleSimulate(wf)}
+              disabled={isRunning || (wf.requiresTxHash && !txHashInputs[wf.id]?.startsWith("0x"))}
               className="mt-3 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
             >
               {isRunning && activeWorkflow === wf.id ? (
