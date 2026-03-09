@@ -1293,9 +1293,8 @@ cd EASEeHealth
 # If you already cloned without --recurse-submodules:
 git submodule update --init --recursive
 
-# 2. Install all dependencies (contracts, npm workspaces, CRE workflows, dashboard)
+# 2. Install all dependencies (contracts, npm workspaces, CRE workflows)
 make install
-cd apps/demo-dashboard && npm install && cd ../..
 
 # 3. Build and test contracts (52 tests including fuzz + invariant)
 make build
@@ -1311,10 +1310,7 @@ make deploy-verify     # confirm escrow balance + roles
 # 6. Start backend services (terminal 3)
 make services
 
-# 7. Start the dashboard (terminal 4)
-make dashboard         # http://localhost:3000
-
-# 8. Simulate CRE workflows (terminal 2)
+# 7. Simulate CRE workflows (terminal 2)
 make simulate-wf001    # full prior-auth flow (needs services + Anvil)
 make simulate-wf002    # consent cascade via HTTP trigger
 make simulate-wf004    # EHR cross-check + EVM reads (needs services + Anvil)
@@ -1329,7 +1325,7 @@ make simulate-wf003 TX_HASH=0x...        # compliance gate
 make submit-wf007-claim                  # emit ClaimSubmitted event
 make simulate-wf007 TX_HASH=0x...        # transfer settlement
 
-# 9. Run the E2E demo (3 scenarios: approve, deny, challenge)
+# 8. Run the E2E demo (3 scenarios: approve, deny, challenge)
 make demo
 ```
 
