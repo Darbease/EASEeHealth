@@ -121,7 +121,7 @@ const CLAIM_DECISION_REGISTRY_ABI = [
     stateMutability: "nonpayable",
     inputs: [
       { name: "claimId", type: "bytes32" },
-      { name: "reason", type: "string" },
+      { name: "reasonCode", type: "uint16" },
     ],
     outputs: [],
   },
@@ -338,6 +338,8 @@ export const onProofEvaluated = (
     : !compliancePassed
       ? `compliance-fail:bitmap=${complianceData?.reason_bitmap ?? "unknown"}`
       : "none";
+  // Numeric reason code for the on-chain ClaimChallenged event (uint16): 1=consent revoked, 2=compliance fail.
+  const reasonCode = consentRisk ? 1 : 2;
 
   runtime.log(`WF-003: Risk assessment — compliance: ${compliancePassed ? "PASS" : "FAIL"}, consent: ${consentActive ? "OK" : "REVOKED"}, challenge: ${shouldChallenge ? "YES" : "NO"}`);
 
@@ -347,7 +349,7 @@ export const onProofEvaluated = (
     const challengeCalldata = encodeFunctionData({
       abi: CLAIM_DECISION_REGISTRY_ABI,
       functionName: "challengeClaim",
-      args: [claimId, riskReason],
+      args: [claimId, reasonCode],
     });
 
     runtime.log(`WF-003: AUTO-CHALLENGE — reason: ${riskReason}`);

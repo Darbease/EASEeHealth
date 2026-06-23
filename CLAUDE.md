@@ -18,7 +18,7 @@ EASE eHealth **MVP implementation is complete** (architecture locked March 4, 20
 
 ## Architecture Overview
 
-The system connects three portals → six backend services → eight Chainlink CRE workflows → five Solidity contracts on Base Sepolia.
+The system connects three portals → six backend services → eight Chainlink CRE workflows → five Solidity contracts (Anvil 31337 for local dev; Ethereum Sepolia 11155111 for testnet).
 
 **Critical data flow (WF-001 happy path):**
 Provider Portal → `POST /v1/prior-auth/submit` → CRE WF-001 → [ConsentRegistry check] → [Policy Service] → [Proof Service stub] → `ClaimDecisionRegistry.submitClaim()` + `setProofResult()` → `ClaimEscrow.schedulePayout()` + `releasePayout()` → callback to provider
@@ -120,7 +120,7 @@ SLO targets: p95 decision latency ≤ 120s, payout success ≥ 99%, zero stuck c
 
 Or run `make demo-full` to automate the full sequence.
 
-Network: **Base Sepolia**. Settlement token: ERC-20 mock USDC (6 decimals).
+Network: **Anvil (31337)** for local dev, **Ethereum Sepolia (11155111)** for testnet. Settlement token: ERC-20 mock USDC (6 decimals).
 
 ## ZK Status
 

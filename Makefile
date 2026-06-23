@@ -3,8 +3,8 @@
        test test-contracts test-services test-dashboard \
        anvil anvil-stop deploy-local fund-tenderly deploy-tenderly deploy-sepolia deploy-verify \
        services services-stop \
-       simulate simulate-wf001 simulate-wf002 simulate-wf004 simulate-wf005 simulate-wf006 simulate-wf008 \
-       broadcast broadcast-wf001 broadcast-wf002 broadcast-wf004 broadcast-wf005 broadcast-wf006 broadcast-wf008 \
+       simulate simulate-wf001 simulate-wf002 simulate-wf004 simulate-wf005 simulate-wf006 simulate-wf008 simulate-wf009 \
+       broadcast broadcast-wf001 broadcast-wf002 broadcast-wf004 broadcast-wf005 broadcast-wf006 broadcast-wf008 broadcast-wf009 \
        submit-wf003-claim simulate-wf003 broadcast-wf003 \
        submit-wf007-claim simulate-wf007 broadcast-wf007 \
        demo demo-full dashboard dashboard-install clean help
@@ -40,6 +40,7 @@ install-cre: ## Install CRE workflow dependencies (bun)
 	cd $(CRE_DIR)/wf-006-medication-payment-verification && bun install
 	cd $(CRE_DIR)/wf-007-claim-transfer-settlement && bun install
 	cd $(CRE_DIR)/wf-008-http-prior-auth && bun install
+	cd $(CRE_DIR)/wf-009-attester-callback && bun install
 
 # ─── Build ───────────────────────────────────────────────────────────
 build: build-contracts ## Build all components
@@ -138,7 +139,7 @@ services-stop: ## Stop all background services
 	@echo "Services stopped"
 
 # ─── CRE Workflow Simulation ─────────────────────────────────────────
-simulate: simulate-wf001 simulate-wf002 simulate-wf004 simulate-wf005 simulate-wf006 simulate-wf008 ## Simulate CRE workflows (services must be running; WF-003/007 need TX_HASH)
+simulate: simulate-wf001 simulate-wf002 simulate-wf004 simulate-wf005 simulate-wf006 simulate-wf008 simulate-wf009 ## Simulate CRE workflows (services must be running; WF-003/007 need TX_HASH)
 
 simulate-wf001: ## Simulate WF-001: Prior Auth Decision
 	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-001-prior-auth-decision --target=$(CRE_TARGET)
@@ -158,8 +159,11 @@ simulate-wf006: ## Simulate WF-006: Medication Payment Verification
 simulate-wf008: ## Simulate WF-008: HTTP Prior Auth (on-demand via HTTP trigger)
 	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-008-http-prior-auth --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --http-payload='{"claim_id":"0x0808080808080808080808080808080808080808080808080808080808080808","payer_id":"payer-demo-001","procedure_code":"PROC_CARDIAC_CT","requested_amount":"38000","consent_id":"0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0","policy_hash":"0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","service_date":"2026-03-08"}'
 
+simulate-wf009: ## Simulate WF-009: Attester Callback (native callback verdict → on-chain)
+	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-009-attester-callback --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --http-payload='{"claim_id":"0x0909090909090909090909090909090909090909090909090909090909090909","policy_hash":"0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","consent_id":"0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0","procedure_code":"PROC_KNEE_MRI","requested_amount":"85000","result":"PASS","reason_bitmap":"0","proof_hash":"0xd9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9"}'
+
 # ─── CRE Workflow Broadcast (writes to chain) ───────────────────────
-broadcast: broadcast-wf001 broadcast-wf002 broadcast-wf004 broadcast-wf005 broadcast-wf006 broadcast-wf008 ## Broadcast CRE workflows (anvil + services; WF-003/007 need TX_HASH)
+broadcast: broadcast-wf001 broadcast-wf002 broadcast-wf004 broadcast-wf005 broadcast-wf006 broadcast-wf008 broadcast-wf009 ## Broadcast CRE workflows (anvil + services; WF-003/007 need TX_HASH)
 
 broadcast-wf001: ## Broadcast WF-001: Prior Auth Decision (on-chain writes)
 	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-001-prior-auth-decision --target=$(CRE_TARGET) --broadcast
@@ -178,6 +182,9 @@ broadcast-wf006: ## Broadcast WF-006: Medication Payment Verification (on-chain 
 
 broadcast-wf008: ## Broadcast WF-008: HTTP Prior Auth (on-chain writes via HTTP trigger)
 	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-008-http-prior-auth --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --broadcast --http-payload='{"claim_id":"0x0808080808080808080808080808080808080808080808080808080808080808","payer_id":"payer-demo-001","procedure_code":"PROC_CARDIAC_CT","requested_amount":"38000","consent_id":"0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0","policy_hash":"0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","service_date":"2026-03-08"}'
+
+broadcast-wf009: ## Broadcast WF-009: Attester Callback (on-chain writes from relayed verdict)
+	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-009-attester-callback --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --broadcast --http-payload='{"claim_id":"0x0909090909090909090909090909090909090909090909090909090909090909","policy_hash":"0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","consent_id":"0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0","procedure_code":"PROC_KNEE_MRI","requested_amount":"85000","result":"PASS","reason_bitmap":"0","proof_hash":"0xd9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9"}'
 
 # ─── WF-003 Log Trigger (requires TX_HASH from setProofResult) ──────
 submit-wf003-claim: ## Submit + approve a claim to emit ProofEvaluated for WF-003

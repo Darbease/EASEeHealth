@@ -73,6 +73,9 @@ contract Deploy is Script {
         escrow.grantRole(escrow.TREASURY_ROLE(), treasuryAddress);
         escrow.grantRole(escrow.TREASURY_ROLE(), deployer); // deployer can also fund for demo
 
+        // Phase 3 enforcement: gate escrow payouts on an attested APPROVED decision.
+        escrow.setClaimDecisionRegistry(address(claims));
+
         // 7. Mint MockUSDC to deployer for initial pool funding
         uint256 initialFund = 1_000_000 * 1e6; // 1M USDC
         usdc.mint(deployer, initialFund);

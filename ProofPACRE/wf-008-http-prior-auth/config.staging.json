@@ -1,7 +1,7 @@
 {
   "authorizedSignerAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
   "policyServiceUrl": "http://localhost:3001",
-  "proofServiceUrl": "http://localhost:3003",
+  "proofServiceUrl": "http://localhost:3007",
   "callbackServiceUrl": "http://localhost:3006",
   "owner": "",
   "chainSelector": "31337",

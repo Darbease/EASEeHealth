@@ -1,0 +1,23 @@
+# ==========================================================================
+# WF-009: Attester Callback
+# ==========================================================================
+# HTTP-triggered workflow that settles a claim from a Confidential AI Attester
+# verdict relayed by decision-callback-service. The clinical document never
+# reaches the DON — only the signed verdict + digests.
+# ==========================================================================
+staging-settings:
+  user-workflow:
+    workflow-name: "EASEeHealth-WF009-AttesterCallback-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: "../secrets.yaml"
+
+# ==========================================================================
+production-settings:
+  user-workflow:
+    workflow-name: "EASEeHealth-WF009-AttesterCallback-production"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: "../secrets.yaml"

@@ -6,12 +6,13 @@ export async function signTypedData(
   types: Record<string, Array<{ name: string; type: string }>>,
   primaryType: string,
   message: Record<string, unknown>,
+  domain: typeof PROOFPA_DOMAIN = PROOFPA_DOMAIN,
 ): Promise<Hex> {
   const account = client.account
   if (!account) throw new Error("WalletClient must have an account")
   return client.signTypedData({
     account,
-    domain: PROOFPA_DOMAIN,
+    domain,
     types,
     primaryType,
     message,

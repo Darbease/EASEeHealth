@@ -7,9 +7,10 @@ export async function verifyEip712Signature(
   message: Record<string, unknown>,
   signature: Hex,
   expectedAddress: Address,
+  domain: typeof PROOFPA_DOMAIN = PROOFPA_DOMAIN,
 ): Promise<boolean> {
   return verifyTypedData({
-    domain: PROOFPA_DOMAIN,
+    domain,
     types,
     primaryType,
     message,

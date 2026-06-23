@@ -1,9 +1,6 @@
 {
-  "schedule": "*/30 * * * * *",
-  "policyServiceUrl": "http://localhost:3001",
-  "proofServiceUrl": "http://localhost:3007",
+  "authorizedSignerAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
   "callbackServiceUrl": "http://localhost:3006",
-  "ehrServiceUrl": "http://localhost:3005",
   "owner": "",
   "chainSelector": "31337",
   "consentRegistryAddress": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",

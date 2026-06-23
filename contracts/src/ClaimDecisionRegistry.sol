@@ -142,4 +142,9 @@ contract ClaimDecisionRegistry is AccessControl {
     ) external view returns (ClaimDecision memory) {
         return _decisions[claimId];
     }
+
+    /// @notice Convenience view used by ClaimEscrow to gate payouts on an approved decision.
+    function isApproved(bytes32 claimId) external view returns (bool) {
+        return _decisions[claimId].state == State.APPROVED;
+    }
 }
