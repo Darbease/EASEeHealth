@@ -1,0 +1,37 @@
+{
+  "resourceType": "Procedure",
+  "id": "proc-430193006-0002",
+  "status": "completed",
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "430193006",
+        "display": "Injection of joint with corticosteroid"
+      }
+    ],
+    "text": "Injection of joint with corticosteroid"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0002-4000-8000-000000000002",
+    "display": "James Patterson"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0002-4000-8000-000000000002"
+  },
+  "performedPeriod": {
+    "start": "2026-02-15T15:15:00Z",
+    "end": "2026-02-15T15:45:00Z"
+  },
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "239872002",
+          "display": "Osteoarthritis of knee"
+        }
+      ]
+    }
+  ]
+}

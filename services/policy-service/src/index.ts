@@ -1,4 +1,7 @@
 import express from "express"
+import { readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { correlationMiddleware, logger } from "@proofpa/observability"
 import { CLINICAL, loadSyntheaData } from "@proofpa/schemas"
 
@@ -113,6 +116,32 @@ app.get("/v1/payer-transitions", (req, res) => {
     ? synthea.payerTransitions.filter((t) => t.Patient === patientId)
     : synthea.payerTransitions
   res.json({ transitions: filtered, count: filtered.length })
+})
+
+// ---------------------------------------------------------------------------
+// Signed benefit designs — the off-chain half of the hybrid plan.
+// PolicyRegistry stores keccak256 of the trimmed document bytes (payer-signed,
+// EIP-712); workflows fetch the document here, hash it, and verify the match.
+// ---------------------------------------------------------------------------
+const dataDir = join(dirname(fileURLToPath(import.meta.url)), "..", "data")
+
+const BENEFIT_DESIGNS: Record<string, string> = {
+  ["0x" + "a1".repeat(32)]: readFileSync(join(dataDir, "benefit-design-plan-a.json"), "utf8").trim(),
+  ["0x" + "b2".repeat(32)]: readFileSync(join(dataDir, "benefit-design-plan-b.json"), "utf8").trim(),
+}
+
+app.get("/v1/plans/:planHash/benefit-design", (req, res) => {
+  const doc = BENEFIT_DESIGNS[req.params.planHash.toLowerCase()]
+  if (!doc) {
+    res.status(404).json({ error: "Benefit design not found" })
+    return
+  }
+  logger.info(
+    { correlation_id: req.correlationId, plan_hash: req.params.planHash },
+    "Benefit design served (verify keccak256 against on-chain PlanCommitment)"
+  )
+  // Raw trimmed bytes — keccak256 of this body must equal the on-chain benefitDesignHash
+  res.type("application/json").send(doc)
 })
 
 app.get("/healthz", (_req, res) => res.json({ status: "ok" }))

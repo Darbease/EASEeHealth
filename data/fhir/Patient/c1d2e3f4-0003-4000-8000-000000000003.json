@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0003-4000-8000-000000000003",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0003-4000-8000-000000000003"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-56-7890"
+    }
+  ],
+  "name": [
+    {
+      "family": "Johnson",
+      "given": [
+        "Aisha",
+        "Monique"
+      ],
+      "prefix": [
+        "Ms."
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1982-07-03",
+  "address": [
+    {
+      "line": [
+        "3201 Martin Luther King Jr Way"
+      ],
+      "city": "Oakland",
+      "state": "CA",
+      "postalCode": "94609"
+    }
+  ]
+}

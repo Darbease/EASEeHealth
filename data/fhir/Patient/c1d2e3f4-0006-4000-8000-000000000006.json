@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0006-4000-8000-000000000006",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0006-4000-8000-000000000006"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-89-0123"
+    }
+  ],
+  "name": [
+    {
+      "family": "Martinez",
+      "given": [
+        "Rosa",
+        "Guadalupe"
+      ],
+      "prefix": [
+        "Ms."
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1975-06-28",
+  "address": [
+    {
+      "line": [
+        "2100 Laguna Boulevard"
+      ],
+      "city": "Elk Grove",
+      "state": "CA",
+      "postalCode": "95758"
+    }
+  ]
+}

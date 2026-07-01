@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0005-4000-8000-000000000005",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0005-4000-8000-000000000005"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-78-9012"
+    }
+  ],
+  "name": [
+    {
+      "family": "O'Brien",
+      "given": [
+        "William",
+        "Thomas"
+      ],
+      "prefix": [
+        "Mr."
+      ]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1945-09-12",
+  "address": [
+    {
+      "line": [
+        "7890 Sunrise Boulevard"
+      ],
+      "city": "Citrus Heights",
+      "state": "CA",
+      "postalCode": "95610"
+    }
+  ]
+}

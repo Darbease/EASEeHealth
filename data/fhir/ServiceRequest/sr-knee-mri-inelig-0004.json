@@ -1,0 +1,61 @@
+{
+  "resourceType": "ServiceRequest",
+  "id": "sr-knee-mri-inelig-0004",
+  "status": "active",
+  "intent": "order",
+  "code": {
+    "coding": [
+      {
+        "system": "http://www.ama-assn.org/go/cpt",
+        "code": "73721",
+        "display": "MRI lower extremity joint w/o contrast"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "code": "241615005",
+        "display": "MRI of knee"
+      }
+    ],
+    "text": "MRI of the right knee, without contrast"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0002-4000-8000-000000000002",
+    "display": "James Patterson"
+  },
+  "requester": {
+    "reference": "Organization/b1a2c3d4-0002-4000-8000-000000000002",
+    "display": "Pacific Orthopedic Associates"
+  },
+  "performer": [
+    {
+      "reference": "Organization/b1a2c3d4-0002-4000-8000-000000000002",
+      "display": "Pacific Orthopedic Associates"
+    }
+  ],
+  "insurance": [
+    {
+      "reference": "Coverage/cov-inelig-bluecross-0002"
+    }
+  ],
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "239872002",
+          "display": "Osteoarthritis of knee"
+        }
+      ]
+    }
+  ],
+  "occurrenceDateTime": "2026-07-15",
+  "extension": [
+    {
+      "url": "https://ease-ehealth.example/fhir/StructureDefinition/requested-amount",
+      "valueMoney": {
+        "value": 850,
+        "currency": "USD"
+      }
+    }
+  ]
+}

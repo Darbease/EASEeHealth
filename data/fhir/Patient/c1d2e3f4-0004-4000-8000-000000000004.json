@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0004-4000-8000-000000000004",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0004-4000-8000-000000000004"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-67-8901"
+    }
+  ],
+  "name": [
+    {
+      "family": "Nakamura",
+      "given": [
+        "David",
+        "Lee"
+      ],
+      "prefix": [
+        "Mr."
+      ]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1990-01-30",
+  "address": [
+    {
+      "line": [
+        "5500 Almaden Expressway"
+      ],
+      "city": "San Jose",
+      "state": "CA",
+      "postalCode": "95118"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "resourceType": "Condition",
+  "id": "cond-33737001-0007",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "resolved",
+        "display": "Resolved"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "33737001",
+        "display": "Fracture of rib"
+      }
+    ],
+    "text": "Fracture of rib"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0007-4000-8000-000000000007",
+    "display": "Tyler Washington"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0007-4000-8000-000000000007"
+  },
+  "onsetDateTime": "2026-02-25",
+  "abatementDateTime": "2026-03-15"
+}

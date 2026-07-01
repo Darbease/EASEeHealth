@@ -7,11 +7,16 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { CLINICAL, loadSyntheaData } from "@proofpa/schemas"
+import { fhirRouter } from "./fhir.js"
 
 const app = express()
 app.use(express.json())
 // correlationMiddleware is typed against the shared package's express copy — cast to this service's handler type.
 app.use(correlationMiddleware as unknown as RequestHandler)
+
+// FHIR R4 substrate (M1): /fhir/r4/* reads + POST /v1/prior-auth/fhir-submit.
+// The legacy /v1/ehr/* CSV endpoints below stay live — WF-001..009 depend on them.
+app.use(fhirRouter)
 
 const Bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/)
 

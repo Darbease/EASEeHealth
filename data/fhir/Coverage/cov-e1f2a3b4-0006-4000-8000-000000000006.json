@@ -1,0 +1,35 @@
+{
+  "resourceType": "Coverage",
+  "id": "cov-e1f2a3b4-0006-4000-8000-000000000006",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/member-id",
+      "value": "e1f2a3b4-0006-4000-8000-000000000006"
+    }
+  ],
+  "status": "active",
+  "subscriberId": "e1f2a3b4-0006-4000-8000-000000000006",
+  "beneficiary": {
+    "reference": "Patient/c1d2e3f4-0006-4000-8000-000000000006",
+    "display": "Rosa Martinez"
+  },
+  "relationship": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+        "code": "self",
+        "display": "Self"
+      }
+    ]
+  },
+  "payor": [
+    {
+      "reference": "Organization/a1b2c3d4-1004-4000-8000-000000000004",
+      "display": "Medicaid California"
+    }
+  ],
+  "period": {
+    "start": "2021-01-01",
+    "end": "2026-12-31"
+  }
+}

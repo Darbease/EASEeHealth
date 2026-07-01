@@ -1,0 +1,25 @@
+# ==========================================================================
+# WF-010: Prior Auth (v1 consolidated)
+# ==========================================================================
+# The real prior-authorization business flow on the shared on-chain backbone:
+# FHIR intake → in-network + eligible + payer-signed plan gates (EVM reads)
+# → medical necessity (confidential attester adapter, fallback-capable)
+# → decision on-chain → escrow settlement gated on APPROVED.
+
+# ==========================================================================
+staging-settings:
+  user-workflow:
+    workflow-name: "EASEeHealth-WF010-PriorAuth-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: "../secrets.yaml"
+
+# ==========================================================================
+production-settings:
+  user-workflow:
+    workflow-name: "EASEeHealth-WF010-PriorAuth-production"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: "../secrets.yaml"

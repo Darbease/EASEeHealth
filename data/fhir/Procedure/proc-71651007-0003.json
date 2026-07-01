@@ -1,0 +1,37 @@
+{
+  "resourceType": "Procedure",
+  "id": "proc-71651007-0003",
+  "status": "completed",
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "71651007",
+        "display": "Mammography"
+      }
+    ],
+    "text": "Mammography"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0003-4000-8000-000000000003",
+    "display": "Aisha Johnson"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0003-4000-8000-000000000003"
+  },
+  "performedPeriod": {
+    "start": "2026-02-18T08:15:00Z",
+    "end": "2026-02-18T08:45:00Z"
+  },
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "254837009",
+          "display": "Breast lump"
+        }
+      ]
+    }
+  ]
+}

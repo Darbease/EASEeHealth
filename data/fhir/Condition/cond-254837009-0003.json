@@ -1,0 +1,41 @@
+{
+  "resourceType": "Condition",
+  "id": "cond-254837009-0003",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "resolved",
+        "display": "Resolved"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "254837009",
+        "display": "Malignant neoplasm of breast"
+      }
+    ],
+    "text": "Malignant neoplasm of breast"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0003-4000-8000-000000000003",
+    "display": "Aisha Johnson"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0003-4000-8000-000000000003"
+  },
+  "onsetDateTime": "2026-02-18",
+  "abatementDateTime": "2026-03-01"
+}

@@ -1,0 +1,37 @@
+{
+  "resourceType": "Procedure",
+  "id": "proc-175066001-0005",
+  "status": "completed",
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "175066001",
+        "display": "Percutaneous coronary intervention"
+      }
+    ],
+    "text": "Percutaneous coronary intervention"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0005-4000-8000-000000000005",
+    "display": "William O'Brien"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0010-4000-8000-000000000010"
+  },
+  "performedPeriod": {
+    "start": "2026-03-04T08:00:00Z",
+    "end": "2026-03-04T13:00:00Z"
+  },
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "53741008",
+          "display": "Coronary arteriosclerosis"
+        }
+      ]
+    }
+  ]
+}

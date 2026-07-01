@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0001-4000-8000-000000000001",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0001-4000-8000-000000000001"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-34-5678"
+    }
+  ],
+  "name": [
+    {
+      "family": "Garcia",
+      "given": [
+        "Maria",
+        "Elena"
+      ],
+      "prefix": [
+        "Mrs."
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1968-04-15",
+  "address": [
+    {
+      "line": [
+        "742 Evergreen Terrace"
+      ],
+      "city": "Sacramento",
+      "state": "CA",
+      "postalCode": "95820"
+    }
+  ]
+}

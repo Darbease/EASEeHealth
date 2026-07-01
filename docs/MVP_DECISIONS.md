@@ -105,5 +105,16 @@ This document freezes the MVP architecture choices so implementation can start w
 - **Scope**: 1 new CRE workflow, Makefile targets for HTTP trigger simulation (`--http-payload`). Zero contract changes, zero service changes.
 - **Demo path**: Provider submits prior auth via HTTP trigger -> WF-008 fires immediately -> consent + policy verified -> proof passes -> claim submitted + approved -> payer coverage ($38,000) paid via ClaimEscrow -> APPROVED -> PAID
 
-## 17. Change Policy
+## 18. v1 Product MVP — shared on-chain backbone + FHIR substrate (added 2026-07-01)
+- **Decision**: Build v1 per `docs/MVP_BUILD_PLAN.md` — one real prior-auth decision end-to-end on a standards-conformant shared backbone. New `OrganizationRegistry` (org identities + Plan-Net-shaped network membership), new `CoverageRegistry` (FHIR Coverage-shaped eligibility), `PolicyRegistry` evolved into the plan (CRD-shaped gates: covered / auth-required / amount cap, plus a payer EIP-712 signature binding the plan to its off-chain benefit design by keccak256). Synthea data regenerated as FHIR R4 served by provider-adapter-api (`/fhir/r4/*`, `POST /v1/prior-auth/fhir-submit`); WF-010 is the consolidated decision workflow (FHIR intake → in-network + eligible + signed-plan gates on-chain → necessity via attester adapter → decision → escrow settle). The 8 showcase workflows are parked in-repo for reference.
+- **Confirmed with darby (2026-07-01), previously open**:
+  1. **Two orgs per side**: 2 payers + 2 providers seeded on the shared registries so the anti-fragmentation thesis ("a fix propagates to all") is demonstrable, not just the flow.
+  2. **Before/after contrast in the demo**: `make demo-v1` prints the legacy X12-via-intermediary path next to the measured on-chain path.
+  3. **Attester-down policy stays fail-open** for v1: when the AI necessity check can't run, approve on the deterministic predicates (adapter fallback). Flagged as a real product/compliance decision to revisit (ROADMAP §8).
+  4. **Plan representation split (hybrid)**: key gates + caps + auth-required on-chain; the full benefit design lives off-chain (policy-service `/v1/plans/{planHash}/benefit-design`), pinned on-chain by keccak256 of the trimmed document and payer-signed (EIP-712 `PlanCommitment`).
+- **Denial bitmap extensions**: bit 8 = provider out-of-network, bit 9 = member not eligible, bit 10 = plan inactive/unsigned (or benefit-design hash mismatch).
+- **Sequencing rule**: rules-first — deterministic coverage rules deny without invoking the necessity step.
+- **Demo paths (Scenario G)**: `sr-knee-mri-0001` APPROVED→PAID ($850 knee MRI); `sr-acupuncture-0002` DENIED bitmap 2; `sr-knee-mri-oon-0003` DENIED bitmap 256; `sr-knee-mri-inelig-0004` DENIED bitmap 512 — escrow gate verified to reject payouts for DENIED claims.
+
+## 19. Change Policy
 Any change to these decisions requires an explicit update to this file with date and rationale.

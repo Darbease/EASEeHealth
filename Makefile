@@ -7,7 +7,8 @@
        broadcast broadcast-wf001 broadcast-wf002 broadcast-wf004 broadcast-wf005 broadcast-wf006 broadcast-wf008 broadcast-wf009 \
        submit-wf003-claim simulate-wf003 broadcast-wf003 \
        submit-wf007-claim simulate-wf007 broadcast-wf007 \
-       demo demo-full dashboard dashboard-install clean help
+       simulate-wf010 broadcast-wf010 demo-v1 \
+       fhir-regen demo demo-full dashboard dashboard-install clean help
 
 CRE := $(HOME)/.cre/bin/cre
 CRE_DIR := ProofPACRE
@@ -41,6 +42,7 @@ install-cre: ## Install CRE workflow dependencies (bun)
 	cd $(CRE_DIR)/wf-007-claim-transfer-settlement && bun install
 	cd $(CRE_DIR)/wf-008-http-prior-auth && bun install
 	cd $(CRE_DIR)/wf-009-attester-callback && bun install
+	cd $(CRE_DIR)/wf-010-prior-auth && bun install
 
 # ─── Build ───────────────────────────────────────────────────────────
 build: build-contracts ## Build all components
@@ -186,6 +188,22 @@ broadcast-wf008: ## Broadcast WF-008: HTTP Prior Auth (on-chain writes via HTTP 
 broadcast-wf009: ## Broadcast WF-009: Attester Callback (on-chain writes from relayed verdict)
 	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-009-attester-callback --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --broadcast --http-payload='{"claim_id":"0x0909090909090909090909090909090909090909090909090909090909090909","policy_hash":"0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","consent_id":"0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0","procedure_code":"PROC_KNEE_MRI","requested_amount":"85000","result":"PASS","reason_bitmap":"0","proof_hash":"0xd9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9"}'
 
+# ─── WF-010: v1 consolidated prior auth (FHIR intake → on-chain rules → necessity → settle) ───
+# The intake payload comes from provider-adapter-api's fhir-submit endpoint (FHIR
+# ServiceRequest → flat decision request). Override the fixture with SR=sr-...
+# Fixtures: sr-knee-mri-0001 (APPROVED→PAID), sr-acupuncture-0002 (not covered),
+#           sr-knee-mri-oon-0003 (out-of-network), sr-knee-mri-inelig-0004 (ineligible)
+SR ?= sr-knee-mri-0001
+
+simulate-wf010: ## Simulate WF-010: v1 Prior Auth (services must be running; SR=<fixture>)
+	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-010-prior-auth --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --http-payload="$$(curl -sf -X POST http://localhost:3005/v1/prior-auth/fhir-submit -H 'Content-Type: application/json' -d '{"serviceRequestId":"$(SR)","correlation_id":"make-wf010-$(SR)"}')"
+
+broadcast-wf010: ## Broadcast WF-010: v1 Prior Auth (anvil + services; SR=<fixture>)
+	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-010-prior-auth --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --broadcast --http-payload="$$(curl -sf -X POST http://localhost:3005/v1/prior-auth/fhir-submit -H 'Content-Type: application/json' -d '{"serviceRequestId":"$(SR)","correlation_id":"make-wf010-$(SR)"}')"
+
+demo-v1: ## v1 MVP demo: all four WF-010 scenarios + before/after contrast (anvil + services running)
+	bash scripts/demo-v1.sh
+
 # ─── WF-003 Log Trigger (requires TX_HASH from setProofResult) ──────
 submit-wf003-claim: ## Submit + approve a claim to emit ProofEvaluated for WF-003
 	cast send 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
@@ -224,6 +242,10 @@ simulate-wf007: ## Simulate WF-007: Claim Transfer Settlement (requires TX_HASH=
 
 broadcast-wf007: ## Broadcast WF-007: Claim Transfer Settlement (requires TX_HASH=0x...)
 	cd $(CRE_DIR) && $(CRE) workflow simulate ./wf-007-claim-transfer-settlement --target=$(CRE_TARGET) --non-interactive --trigger-index=0 --broadcast --evm-tx-hash=$(TX_HASH) --evm-event-index=0
+
+# ─── Data ────────────────────────────────────────────────────────────
+fhir-regen: ## Regenerate FHIR R4 resources (data/fhir/) from data/synthea CSVs
+	node scripts/synthea-to-fhir.mjs
 
 # ─── Demo ────────────────────────────────────────────────────────────
 demo: ## Run the E2E demo runner (all 3 scenarios)
