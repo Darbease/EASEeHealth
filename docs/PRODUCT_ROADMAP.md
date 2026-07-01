@@ -125,3 +125,4 @@ The Attester being offline blocks **only** the live half of R3. Everything else 
 - How far to follow Da Vinci literally (full PAS/CRD/DTR conformance) vs. borrow its shapes.
 - Attester future: rely on the team's hosted preview (with our fallback), or stand up an HA / self-hosted TEE inference path.
 - Regulatory scope: is this a decision-support tool, or making binding coverage determinations (changes the compliance bar materially).
+- **Attester-down policy** (fallback behaviour when the AI necessity check can't run): currently fail-**open** — approve on the policy predicates alone, with necessity *skipped* (not failed). Alternatives: fail-**closed** (no `APPROVED` without a real attestation — hold `PENDING` or deny) or **provisional** (approve but flag `verdict_source: fallback` on-chain for re-review when the attester returns). A real policy/compliance choice — relates to R3/R5.
