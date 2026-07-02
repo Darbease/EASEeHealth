@@ -1,117 +1,82 @@
 # X/Twitter thread — EASE eHealth: prior auth on Chainlink CRE
 
-*15 tweets, each ≤280 chars. Companion to [`prior-auth-on-cre.md`](./prior-auth-on-cre.md). Figures cited in [`docs/REALITY_MAP.md`](../REALITY_MAP.md).*
+*12 tweets, each ≤280 chars. Arc: the problem → how it works today → CRE in the middle of the API calls → smart-contract verification (patient on plan) → funds release. Figures cited in [`docs/REALITY_MAP.md`](../REALITY_MAP.md).*
 
 ---
 
 **1/**
-In Feb 2024, one missing MFA control at one company froze ~half of all US medical claims.
+US doctors spend ~13 hours a week asking insurers for permission to treat their patients.
 
-UnitedHealth loaned providers $8.9B just to keep clinics alive.
+Prior authorization: 37% still happens by fax/phone/mail. ~$6 and 11 minutes per request. 7.7% denied — and 80.7% of appealed denials get overturned.
 
-That company was the de-facto "shared backbone" of US healthcare.
-
-We rebuilt it so no one owns it. 🧵
+We automated it end-to-end. 🧵
 
 **2/**
-Prior authorization today:
-• 31% fully electronic; 37% still fax/phone/mail
-• ~$6 + 11 minutes per request
-• 13 hrs per physician per week
-• 7.7% denied — and 80.7% of appealed denials get OVERTURNED
+How it works today: the doctor's EHR sends a request → a clearinghouse translates it into a 1990s EDI format (X12 278) → the payer's system → back through the middleman again.
 
-Admin waste across the system: ~$265B/yr (JAMA).
+And every payer keeps its own private copy of plans, eligibility, and network directories.
 
 **3/**
-CMS prescribed the fix in 2018: a shared central repository — "a corrected error… would improve accuracy for all."
+That middleman layer is so concentrated that ~50% of US claims flow through ONE company.
 
-The industry built exactly that. It became Change Healthcare: ~50% of claims through one chokepoint.
+In Feb 2024, a single missing MFA control there froze the nation's claims. $8.9B in emergency loans to keep clinics open.
 
-The prescribed remedy became the single point of failure.
+A shared backbone — built as a single point of failure.
 
 **4/**
-So the real spec is: a shared source of truth that NO single party owns and no single control failure can take down.
+Our version: the shared facts move on-chain, and @chainlink CRE sits in the middle of the API calls instead of a clearinghouse.
 
-Regulators named the destination. A centralized intermediary structurally can't be it.
-
-That's not blockchain-hunting-for-a-problem. That's a datasheet.
+No translation layer. No owner. Every payer and provider reads and writes the same verifiable state.
 
 **5/**
-Our thesis in one line:
+The flow: a provider submits the prior-auth request as a FHIR ServiceRequest — the same shape CMS mandates payers support by 2027.
 
-Prior authorization is two questions and a payment.
-
-"Is this care medically necessary?" — judgment over documents.
-"Is it covered for this member?" — rules over shared facts.
-
-Both yes → money moves to the provider.
+That signed HTTP call triggers a CRE workflow directly. No cron. No queue. No intermediary inbox.
 
 **6/**
-"Covered?" is deterministic → smart contracts. Three registries shared by every payer & provider:
+First, CRE re-fetches the clinical record over confidential HTTP and cross-checks the submission against the source.
 
-• OrganizationRegistry — in-network? (ghost networks: >80% of directory listings are wrong)
-• CoverageRegistry — eligible?
-• PolicyRegistry — the plan itself, payer-signed
+Patient data stays encrypted end-to-end — DON nodes relay ciphertext.
+
+No PHI ever touches the chain. Only hashes, states, and payouts do.
 
 **7/**
-The plan is hybrid:
+Then CRE checks the smart contracts — three reads against the shared registries:
 
-Key gates (covered / auth-required / caps) live on-chain, adjudicated per procedure.
-
-The full benefit design lives off-chain — pinned by keccak256 inside an EIP-712 PlanCommitment signed by the payer.
-
-Payers can't quietly rewrite terms.
+• OrganizationRegistry: is this provider in-network for the plan?
+• CoverageRegistry: is this patient actually ON the plan, right now?
+• PolicyRegistry: is the procedure covered, under the cap?
 
 **8/**
-"Necessary?" is judgment → confidential AI in a TEE, reasoning over the physician's letter.
+Those aren't our rules — they're the payer's.
 
-It sits behind an adapter with deterministic fallback (verdict_source stamped honestly).
-
-And rules run FIRST — no confidential inference spent on a claim the rules already killed.
+Each plan's gates live on-chain, signed by the payer (EIP-712), with the full benefit design pinned by keccak256 hash. CRE verifies the served document against the signed commitment before trusting a byte of it.
 
 **9/**
-No PHI on-chain. Ever.
+If the rules pass, one judgment call remains: medical necessity.
 
-On-chain: hashes, state transitions, policy refs, payout events.
+CRE sends the physician's letter to a confidential AI in a TEE over encrypted HTTP; it returns a signed verdict.
 
-Clinical FHIR data moves only over @chainlink CRE confidential HTTP — DON nodes relay ciphertext.
+(Deterministic fallback when the TEE is offline — stamped honestly as verdict_source: fallback.)
 
 **10/**
-CRE is the connective tissue. ONE workflow:
+The decision is written on-chain via DON-signed reports. If APPROVED, funds release from escrow to the provider in the same flow.
 
-HTTP trigger (signed submit) → confidential FHIR fetch + cross-check → 3 EVM reads (network, eligibility, signed plan gates) → benefit-design hash vs on-chain commitment → AI necessity → two-phase DON report writes → escrow.
+The escrow contract enforces the gate itself: releasePayout REVERTS unless the claim is APPROVED on-chain.
+
+A denied claim cannot be paid. Period.
 
 **11/**
-And the money can't misbehave:
+Measured results:
 
-ClaimEscrow.releasePayout REVERTS unless the decision registry says APPROVED.
+Knee MRI, $850, in-network, patient on plan, covered → APPROVED → PAID in 328ms.
+Not covered / out-of-network / not on the plan → DENIED in ~140ms, each with a machine-readable reason.
 
-Even a buggy or malicious orchestrator cannot pay a denied claim. Enforcement lives in the contract, not the workflow.
+The regulatory ceiling for these decisions: 72 hours.
 
 **12/**
-Measured end-to-end (2 payers + 2 providers on ONE shared registry set):
+The claim→remittance cycle that takes weeks today (837/835) collapses into the approval itself.
 
-✅ Knee MRI, $850 → APPROVED→PAID in 328ms
-❌ Not covered → DENIED (bitmap 2), 139ms
-❌ Out-of-network → DENIED (256), 139ms
-❌ Coverage lapsed → DENIED (512), 140ms
+FHIR R4 + Da Vinci shapes. Foundry contracts, 96 tests. @chainlink CRE: HTTP triggers, confidential HTTP, EVM reads/writes with DON consensus.
 
-The regulatory ceiling: 72 hours.
-
-**13/**
-Every denial carries a machine-readable reason — what CMS-0057-F requires by 2027, a deadline only ~47% of providers expect to hit.
-
-And the claim→remittance cycle (837/835, weeks in the wild) collapses into the same transaction as the approval.
-
-**14/**
-Honesty line: the $265B gap is proven. That our design recaptures it is a hypothesis — one we earn by measuring, not asserting.
-
-That's why the workflow instruments its own decision latency and stamps verdict_source=fallback instead of hiding it.
-
-**15/**
-Standards-shaped (FHIR R4, Da Vinci PAS/CRD/Plan-Net). Foundry + OpenZeppelin, 96 tests. Synthea clinical data.
-
-Built on @chainlink CRE: HTTP triggers, confidential HTTP, EVM read/write with DON consensus.
-
-Code + cited evidence base:
-github.com/Darbease/EASEeHealth
+Code: github.com/Darbease/EASEeHealth
