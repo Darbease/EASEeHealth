@@ -319,16 +319,16 @@ cards[12] = () => {
   ], 56, { size: 29, fill: C.dim });
   s += txt(100, 618, "PlanCommitment ✓ signature verified", { size: 26, fill: C.green, weight: 700, family: "Menlo, monospace" });
   s += panel(820, 240, 720, 420);
-  s += txt(860, 310, "The one judgment call", { size: 34, weight: 800, fill: C.teal });
+  s += txt(860, 310, "Medical necessity — from the EHR", { size: 34, weight: 800, fill: C.teal });
   s += lines(860, 370, [
-    "Medical necessity",
-    "Confidential AI inside a TEE",
-    "Reads the physician's letter",
-    "Returns a signed verdict",
+    "Diagnosis + reason codes",
+    "Documented treatment history",
+    "Physician's letter on file",
+    "Checked against the plan's criteria",
   ], 56, { size: 29, fill: C.dim });
-  s += lock(1400, 300, 60, C.teal);
-  s += txt(60, 760, "Rules answer question 2 deterministically. The TEE answers question 1.", { size: 32, weight: 700 });
-  s += foot("Deterministic fallback when the TEE is offline — stamped verdict_source: fallback");
+  s += lock(1460, 290, 54, C.teal);
+  s += txt(60, 760, "Question 2 is the smart contracts. Question 1 is the EHR record itself.", { size: 32, weight: 700 });
+  s += foot("The clinical record travels over confidential HTTP — verified, never exposed");
   return s;
 };
 

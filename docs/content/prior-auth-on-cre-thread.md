@@ -86,9 +86,9 @@ Then CRE checks the smart contracts — three reads against shared registries:
 • PolicyRegistry: is the procedure covered, under the cap?
 
 **12/**
-Those aren't our rules — they're the insurer's.
+Those aren't our rules — they're the insurer's. Each plan's gates live on-chain, payer-signed (EIP-712), the full benefit design pinned by hash.
 
-Each plan's gates live on-chain, signed by the payer (EIP-712), with the full benefit design pinned by hash. One judgment call remains — medical necessity — handled by a confidential AI in a TEE reading the physician's letter.
+Medical necessity? The EHR record answers it — diagnosis, treatment history, and the doctor's documentation vs. the plan's criteria.
 
 **13/**
 The decision is written on-chain via DON-signed reports. If APPROVED, stablecoin funds release from escrow to the provider in the same flow.
