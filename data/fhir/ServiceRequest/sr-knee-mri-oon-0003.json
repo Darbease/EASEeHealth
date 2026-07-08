@@ -1,0 +1,66 @@
+{
+  "resourceType": "ServiceRequest",
+  "id": "sr-knee-mri-oon-0003",
+  "status": "active",
+  "intent": "order",
+  "code": {
+    "coding": [
+      {
+        "system": "http://www.ama-assn.org/go/cpt",
+        "code": "73721",
+        "display": "MRI lower extremity joint w/o contrast"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "code": "241615005",
+        "display": "MRI of knee"
+      }
+    ],
+    "text": "MRI of the right knee, without contrast"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0001-4000-8000-000000000001",
+    "display": "Maria Garcia"
+  },
+  "requester": {
+    "reference": "Organization/b1a2c3d4-0001-4000-8000-000000000001",
+    "display": "Mercy General Hospital"
+  },
+  "performer": [
+    {
+      "reference": "Organization/b1a2c3d4-0001-4000-8000-000000000001",
+      "display": "Mercy General Hospital"
+    }
+  ],
+  "insurance": [
+    {
+      "reference": "Coverage/cov-e1f2a3b4-0001-4000-8000-000000000001"
+    }
+  ],
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "239872002",
+          "display": "Osteoarthritis of knee"
+        }
+      ]
+    }
+  ],
+  "occurrenceDateTime": "2026-07-15",
+  "extension": [
+    {
+      "url": "https://ease-ehealth.example/fhir/StructureDefinition/requested-amount",
+      "valueMoney": {
+        "value": 850,
+        "currency": "USD"
+      }
+    }
+  ],
+  "supportingInfo": [
+    {
+      "reference": "DocumentReference/dr-knee-mri-0001"
+    }
+  ]
+}

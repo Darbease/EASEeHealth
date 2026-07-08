@@ -71,6 +71,25 @@ const POLICY_REGISTRY_ABI = [
     ],
     outputs: [{ name: "", type: "bool" }],
   },
+  {
+    name: "getPolicyVersion",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "policyHash", type: "bytes32" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "policyHash", type: "bytes32" },
+          { name: "verifierKeyHash", type: "bytes32" },
+          { name: "effectiveFrom", type: "uint64" },
+          { name: "effectiveTo", type: "uint64" },
+          { name: "active", type: "bool" },
+        ],
+      },
+    ],
+  },
 ] as const;
 
 const CLAIM_DECISION_REGISTRY_ABI = [
@@ -315,6 +334,31 @@ export const onPriorAuthCron = (
 
   runtime.log(`WF-001: Policy verified on-chain: ${policyActive ? "ACTIVE" : "INACTIVE"}`);
 
+  // ---- Step 3b: Read the policy's verifier key hash (Phase 3 attester anchor) ----
+  // PolicyRegistry.verifierKeyHash records which attester identity is authorised
+  // to attest for this policy version. We read it here and compare (softly) to
+  // the key that signed the verdict below.
+  const policyVersionCalldata = encodeFunctionData({
+    abi: POLICY_REGISTRY_ABI,
+    functionName: "getPolicyVersion",
+    args: [policyHash],
+  });
+  const policyVersionResult = evmClient.callContract(runtime, {
+    call: encodeCallMsg({
+      from: config.creSignerAddress as `0x${string}`,
+      to: config.policyRegistryAddress as `0x${string}`,
+      data: policyVersionCalldata,
+    }),
+    blockNumber: LATEST_BLOCK_NUMBER,
+  }).result();
+  const policyVersion = decodeFunctionResult({
+    abi: POLICY_REGISTRY_ABI,
+    functionName: "getPolicyVersion",
+    data: bytesToHex(policyVersionResult.data),
+  }) as unknown as { verifierKeyHash: string };
+  const policyVerifierKeyHash = policyVersion.verifierKeyHash;
+  runtime.log(`WF-001: Policy verifier key hash: ${policyVerifierKeyHash.substring(0, 10)}...`);
+
   // ---- Step 4: Call proof-service-stub via confidential HTTP ----
   runtime.log(`WF-001: [ENCRYPTED] Evaluating medical necessity — ${procedureCode}, amount ${requestedAmount}`);
   const proofJsonStr = JSON.stringify({
@@ -354,6 +398,17 @@ export const onPriorAuthCron = (
   const decisionState = proofOk ? "APPROVED" : "DENIED";
   runtime.log(`WF-001: [ENCRYPTED] Proof evaluation: ${proofOk ? "PASSED" : "FAILED"}`);
 
+  // Phase 3 attester anchor (soft): compare the attester key that signed this
+  // verdict to the policy's verifierKeyHash. Logged, not enforced — flip to a
+  // hard check once the policy is seeded with the live attester key.
+  const attesterKeyHash = (proofData?.attester?.attester_key_hash as string | undefined) ?? null;
+  if (attesterKeyHash) {
+    const matches = attesterKeyHash.toLowerCase() === policyVerifierKeyHash.toLowerCase();
+    runtime.log(`WF-001: Attester key vs policy verifierKeyHash: ${matches ? "MATCH" : "MISMATCH (not enforced)"}`);
+  } else {
+    runtime.log(`WF-001: No attester key in verdict (deterministic/fallback) — policy anchor skipped`);
+  }
+
   // ---- Step 5: Submit claim on-chain [EVM WRITE] ----
   const submitCalldata = encodeFunctionData({
     abi: CLAIM_DECISION_REGISTRY_ABI,
@@ -376,10 +431,13 @@ export const onPriorAuthCron = (
   // ---- Step 6: Record proof result on-chain [EVM WRITE] ----
   // Use the actual reason_bitmap from the proof service response.
   const reasonBitmap = proofOk ? 0n : BigInt(proofData?.reason_bitmap ?? "1");
+  // Provenance: write the attester's signed response digest (proof_hash) on-chain,
+  // not the demo fixture. Falls back to the fixture only if the service omits it.
+  const attestedProofHash = (proofData?.proof_hash as `0x${string}` | undefined) ?? proofHash;
   const setProofCalldata = encodeFunctionData({
     abi: CLAIM_DECISION_REGISTRY_ABI,
     functionName: "setProofResult",
-    args: [claimId, proofHash, reasonBitmap, proofOk],
+    args: [claimId, attestedProofHash, reasonBitmap, proofOk],
   });
 
   runtime.log(`WF-001: Recording proof result — reason bitmap: ${reasonBitmap === 0n ? "0 (no denial flags)" : reasonBitmap.toString()}`);

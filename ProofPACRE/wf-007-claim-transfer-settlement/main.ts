@@ -371,10 +371,13 @@ export const onClaimTransferLog = (
   // ---- Step 5: Record proof result on-chain [EVM WRITE] ----
   // No submitClaim — the claim is already SUBMITTED (that's what triggered this workflow)
   const reasonBitmap = proofOk ? 0n : BigInt(proofData?.reason_bitmap ?? "1");
+  // Provenance: write the attester's signed response digest (proof_hash) on-chain,
+  // not the demo fixture. Falls back to the fixture only if the service omits it.
+  const attestedProofHash = (proofData?.proof_hash as `0x${string}` | undefined) ?? proofHash;
   const setProofCalldata = encodeFunctionData({
     abi: CLAIM_DECISION_REGISTRY_ABI,
     functionName: "setProofResult",
-    args: [claimId, proofHash, reasonBitmap, proofOk],
+    args: [claimId, attestedProofHash, reasonBitmap, proofOk],
   });
 
   runtime.log(`WF-007: DECISION: ${decisionState} — Recording proof for claim ${claimId.substring(0, 10)}...${claimId.substring(58)}`);

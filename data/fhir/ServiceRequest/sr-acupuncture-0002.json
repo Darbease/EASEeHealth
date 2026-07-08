@@ -1,0 +1,61 @@
+{
+  "resourceType": "ServiceRequest",
+  "id": "sr-acupuncture-0002",
+  "status": "active",
+  "intent": "order",
+  "code": {
+    "coding": [
+      {
+        "system": "http://www.ama-assn.org/go/cpt",
+        "code": "97810",
+        "display": "Acupuncture w/o electrical stimulation, initial 15 min"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "code": "44868003",
+        "display": "Acupuncture"
+      }
+    ],
+    "text": "Acupuncture, initial visit"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0001-4000-8000-000000000001",
+    "display": "Maria Garcia"
+  },
+  "requester": {
+    "reference": "Organization/b1a2c3d4-0002-4000-8000-000000000002",
+    "display": "Pacific Orthopedic Associates"
+  },
+  "performer": [
+    {
+      "reference": "Organization/b1a2c3d4-0002-4000-8000-000000000002",
+      "display": "Pacific Orthopedic Associates"
+    }
+  ],
+  "insurance": [
+    {
+      "reference": "Coverage/cov-e1f2a3b4-0001-4000-8000-000000000001"
+    }
+  ],
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "239872002",
+          "display": "Osteoarthritis of knee"
+        }
+      ]
+    }
+  ],
+  "occurrenceDateTime": "2026-07-15",
+  "extension": [
+    {
+      "url": "https://ease-ehealth.example/fhir/StructureDefinition/requested-amount",
+      "valueMoney": {
+        "value": 120,
+        "currency": "USD"
+      }
+    }
+  ]
+}

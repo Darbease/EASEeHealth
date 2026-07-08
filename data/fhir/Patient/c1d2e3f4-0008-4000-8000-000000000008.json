@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0008-4000-8000-000000000008",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0008-4000-8000-000000000008"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-01-2345"
+    }
+  ],
+  "name": [
+    {
+      "family": "Thompson",
+      "given": [
+        "Susan",
+        "Marie"
+      ],
+      "prefix": [
+        "Mrs."
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1958-12-05",
+  "address": [
+    {
+      "line": [
+        "400 Blue Ravine Road"
+      ],
+      "city": "Folsom",
+      "state": "CA",
+      "postalCode": "95630"
+    }
+  ]
+}

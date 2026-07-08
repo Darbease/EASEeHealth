@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ClaimEscrow} from "../src/ClaimEscrow.sol";
+import {ClaimDecisionRegistry} from "../src/ClaimDecisionRegistry.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -333,5 +334,115 @@ contract ClaimEscrowInvariantTest is Test {
         uint256 balance = usdc.balanceOf(address(escrow));
         uint256 scheduled = escrow.totalScheduled();
         assertLe(scheduled, balance, "Scheduled payouts exceed escrow balance");
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Phase 3 — payout provably gated on an attested APPROVED decision
+// ═════════════════════════════════════════════════════════════════════
+
+contract ClaimEscrowGatingTest is Test {
+    ClaimEscrow public escrow;
+    ClaimDecisionRegistry public registry;
+    MockUSDC public usdc;
+
+    address public admin = address(this);
+    address public workflow = address(0x1001); // CRE signer — WORKFLOW_ROLE on both contracts
+    address public treasury = address(0x7EA5);
+    address public recipient = address(0xBEEF);
+
+    bytes32 constant CLAIM_ID = keccak256("gated-claim");
+    bytes32 constant POLICY_HASH = keccak256("policy-v1");
+    bytes32 constant PROOF_HASH = keccak256("attester-response-digest");
+    uint256 constant PAYOUT_AMOUNT = 500e6;
+
+    function setUp() public {
+        usdc = new MockUSDC();
+        registry = new ClaimDecisionRegistry(admin);
+        escrow = new ClaimEscrow(admin, IERC20(address(usdc)));
+
+        registry.grantRole(registry.WORKFLOW_ROLE(), workflow);
+        escrow.grantRole(escrow.WORKFLOW_ROLE(), workflow);
+        escrow.grantRole(escrow.TREASURY_ROLE(), treasury);
+
+        // Wire the gate.
+        escrow.setClaimDecisionRegistry(address(registry));
+
+        usdc.mint(treasury, 1_000_000e6);
+        vm.prank(treasury);
+        usdc.approve(address(escrow), type(uint256).max);
+        vm.prank(treasury);
+        escrow.fundPool(1_000_000e6);
+    }
+
+    function _schedule() internal {
+        vm.prank(workflow);
+        escrow.schedulePayout(CLAIM_ID, recipient, PAYOUT_AMOUNT);
+    }
+
+    function _approve() internal {
+        vm.startPrank(workflow);
+        registry.submitClaim(CLAIM_ID, POLICY_HASH);
+        registry.setProofResult(CLAIM_ID, PROOF_HASH, 0, true);
+        vm.stopPrank();
+    }
+
+    function test_release_revertsWhenNoDecision() public {
+        _schedule(); // no decision recorded → registry state NONE
+        vm.prank(workflow);
+        vm.expectRevert("ClaimEscrow: claim not approved");
+        escrow.releasePayout(CLAIM_ID);
+    }
+
+    function test_release_revertsWhenDenied() public {
+        _schedule();
+        vm.startPrank(workflow);
+        registry.submitClaim(CLAIM_ID, POLICY_HASH);
+        registry.setProofResult(CLAIM_ID, PROOF_HASH, 1, false); // DENIED
+        vm.stopPrank();
+
+        vm.prank(workflow);
+        vm.expectRevert("ClaimEscrow: claim not approved");
+        escrow.releasePayout(CLAIM_ID);
+    }
+
+    function test_release_succeedsWhenApproved() public {
+        _schedule();
+        _approve();
+
+        uint256 balBefore = usdc.balanceOf(recipient);
+        vm.prank(workflow);
+        escrow.releasePayout(CLAIM_ID);
+
+        assertEq(usdc.balanceOf(recipient), balBefore + PAYOUT_AMOUNT);
+        ClaimEscrow.PayoutInstruction memory p = escrow.getPayout(CLAIM_ID);
+        assertEq(uint8(p.status), uint8(ClaimEscrow.PayoutStatus.RELEASED));
+    }
+
+    function test_setRegistry_onlyAdmin() public {
+        vm.prank(address(0xBAD));
+        vm.expectRevert();
+        escrow.setClaimDecisionRegistry(address(registry));
+    }
+
+    function test_gateDisabledWhenUnset() public {
+        // A fresh escrow with no registry wired keeps legacy behaviour (no gate).
+        ClaimEscrow ungated = new ClaimEscrow(admin, IERC20(address(usdc)));
+        ungated.grantRole(ungated.WORKFLOW_ROLE(), workflow);
+        ungated.grantRole(ungated.TREASURY_ROLE(), treasury);
+
+        usdc.mint(treasury, PAYOUT_AMOUNT);
+        vm.prank(treasury);
+        usdc.approve(address(ungated), type(uint256).max);
+        vm.prank(treasury);
+        ungated.fundPool(PAYOUT_AMOUNT);
+
+        vm.prank(workflow);
+        ungated.schedulePayout(CLAIM_ID, recipient, PAYOUT_AMOUNT);
+        vm.prank(workflow);
+        ungated.releasePayout(CLAIM_ID); // no registry → releases without an approval
+
+        ClaimEscrow.PayoutInstruction memory p = ungated.getPayout(CLAIM_ID);
+        assertEq(uint8(p.status), uint8(ClaimEscrow.PayoutStatus.RELEASED));
     }
 }

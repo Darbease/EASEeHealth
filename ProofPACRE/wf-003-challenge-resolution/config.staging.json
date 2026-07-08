@@ -1,6 +1,6 @@
 {
   "policyServiceUrl": "http://localhost:3001",
-  "proofServiceUrl": "http://localhost:3003",
+  "proofServiceUrl": "http://localhost:3007",
   "callbackServiceUrl": "http://localhost:3006",
   "owner": "",
   "chainSelector": "31337",

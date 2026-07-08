@@ -1,0 +1,40 @@
+{
+  "resourceType": "Condition",
+  "id": "cond-73211009-0006",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "73211009",
+        "display": "Diabetes mellitus type 2"
+      }
+    ],
+    "text": "Diabetes mellitus type 2"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0006-4000-8000-000000000006",
+    "display": "Rosa Martinez"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0006-4000-8000-000000000006"
+  },
+  "onsetDateTime": "2025-01-12"
+}

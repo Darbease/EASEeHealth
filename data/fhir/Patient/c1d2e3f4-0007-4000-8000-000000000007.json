@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0007-4000-8000-000000000007",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0007-4000-8000-000000000007"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-90-1234"
+    }
+  ],
+  "name": [
+    {
+      "family": "Washington",
+      "given": [
+        "Tyler",
+        "James"
+      ],
+      "prefix": [
+        "Mr."
+      ]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "2001-03-17",
+  "address": [
+    {
+      "line": [
+        "10800 Olson Drive"
+      ],
+      "city": "Rancho Cordova",
+      "state": "CA",
+      "postalCode": "95670"
+    }
+  ]
+}

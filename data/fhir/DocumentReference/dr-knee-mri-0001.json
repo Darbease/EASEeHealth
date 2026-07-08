@@ -1,0 +1,42 @@
+{
+  "resourceType": "DocumentReference",
+  "id": "dr-knee-mri-0001",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/necessity-letter",
+      "value": "PROC_KNEE_MRI"
+    }
+  ],
+  "status": "current",
+  "type": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "34109-9",
+        "display": "Note"
+      }
+    ],
+    "text": "Letter of medical necessity"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0001-4000-8000-000000000001",
+    "display": "Maria Garcia"
+  },
+  "date": "2026-02-15T00:00:00Z",
+  "author": [
+    {
+      "reference": "Organization/b1a2c3d4-0002-4000-8000-000000000002",
+      "display": "Pacific Orthopedic Associates"
+    }
+  ],
+  "description": "Letter of medical necessity — MRI right knee (CPT 73721)",
+  "content": [
+    {
+      "attachment": {
+        "contentType": "text/markdown",
+        "url": "/fhir/r4/DocumentReference/dr-knee-mri-0001/$content",
+        "title": "PROC_KNEE_MRI.md"
+      }
+    }
+  ]
+}

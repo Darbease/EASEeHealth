@@ -1,0 +1,38 @@
+{
+  "resourceType": "Patient",
+  "id": "c1d2e3f4-0002-4000-8000-000000000002",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/mrn",
+      "value": "c1d2e3f4-0002-4000-8000-000000000002"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-45-6789"
+    }
+  ],
+  "name": [
+    {
+      "family": "Patterson",
+      "given": [
+        "James",
+        "Robert"
+      ],
+      "prefix": [
+        "Mr."
+      ]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1955-11-22",
+  "address": [
+    {
+      "line": [
+        "1845 Oak Park Boulevard"
+      ],
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94122"
+    }
+  ]
+}

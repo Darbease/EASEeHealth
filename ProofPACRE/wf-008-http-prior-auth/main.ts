@@ -334,10 +334,13 @@ export const onPriorAuthRequest = (
 
   // ---- Step 6: Record proof result on-chain [EVM WRITE] ----
   const reasonBitmap = proofOk ? 0n : BigInt(proofData?.reason_bitmap ?? "1");
+  // Provenance: write the attester's signed response digest (proof_hash) on-chain,
+  // not the demo fixture. Falls back to the fixture only if the service omits it.
+  const attestedProofHash = (proofData?.proof_hash as `0x${string}` | undefined) ?? proofHash;
   const setProofCalldata = encodeFunctionData({
     abi: CLAIM_DECISION_REGISTRY_ABI,
     functionName: "setProofResult",
-    args: [claimId, proofHash, reasonBitmap, proofOk],
+    args: [claimId, attestedProofHash, reasonBitmap, proofOk],
   });
 
   runtime.log(`WF-008: Recording proof result — reason bitmap: ${reasonBitmap === 0n ? "0 (no denial flags)" : reasonBitmap.toString()}`);

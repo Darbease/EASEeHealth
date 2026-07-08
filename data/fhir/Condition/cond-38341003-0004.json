@@ -1,0 +1,40 @@
+{
+  "resourceType": "Condition",
+  "id": "cond-38341003-0004",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "38341003",
+        "display": "Hypertensive disorder"
+      }
+    ],
+    "text": "Hypertensive disorder"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0004-4000-8000-000000000004",
+    "display": "David Nakamura"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0004-4000-8000-000000000004"
+  },
+  "onsetDateTime": "2023-06-20"
+}

@@ -1,7 +1,7 @@
 {
   "schedule": "*/30 * * * * *",
   "policyServiceUrl": "http://localhost:3001",
-  "proofServiceUrl": "http://localhost:3003",
+  "proofServiceUrl": "http://localhost:3007",
   "callbackServiceUrl": "http://localhost:3006",
   "ehrServiceUrl": "http://localhost:3005",
   "owner": "",

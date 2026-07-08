@@ -1,0 +1,37 @@
+{
+  "resourceType": "Procedure",
+  "id": "proc-399208008-0007",
+  "status": "completed",
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "399208008",
+        "display": "CT scan of chest"
+      }
+    ],
+    "text": "CT scan of chest"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0007-4000-8000-000000000007",
+    "display": "Tyler Washington"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0007-4000-8000-000000000007"
+  },
+  "performedPeriod": {
+    "start": "2026-02-27T13:10:00Z",
+    "end": "2026-02-27T13:25:00Z"
+  },
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "33737001",
+          "display": "Fracture of rib"
+        }
+      ]
+    }
+  ]
+}

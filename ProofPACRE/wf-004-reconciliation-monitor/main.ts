@@ -62,11 +62,11 @@ const CLAIM_DECISION_REGISTRY_ABI = [
         type: "tuple",
         components: [
           { name: "claimId", type: "bytes32" },
-          { name: "policyHash", type: "bytes32" },
           { name: "state", type: "uint8" },
+          { name: "policyHash", type: "bytes32" },
           { name: "proofHash", type: "bytes32" },
           { name: "reasonBitmap", type: "uint256" },
-          { name: "updatedAt", type: "uint256" },
+          { name: "updatedAt", type: "uint64" },
         ],
       },
     ],

@@ -1,0 +1,50 @@
+{
+  "resourceType": "Coverage",
+  "id": "cov-inelig-bluecross-0002",
+  "identifier": [
+    {
+      "system": "https://ease-ehealth.example/member-id",
+      "value": "e1f2a3b4-0002-4000-8000-000000000002"
+    }
+  ],
+  "status": "cancelled",
+  "subscriberId": "e1f2a3b4-0002-4000-8000-000000000002",
+  "beneficiary": {
+    "reference": "Patient/c1d2e3f4-0002-4000-8000-000000000002",
+    "display": "James Patterson"
+  },
+  "relationship": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+        "code": "self",
+        "display": "Self"
+      }
+    ]
+  },
+  "payor": [
+    {
+      "reference": "Organization/a1b2c3d4-1001-4000-8000-000000000001",
+      "display": "BlueCross Preferred PPO"
+    }
+  ],
+  "period": {
+    "start": "2018-01-01",
+    "end": "2018-12-31"
+  },
+  "class": [
+    {
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+            "code": "plan",
+            "display": "Plan"
+          }
+        ]
+      },
+      "value": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "name": "BlueCross Preferred PPO"
+    }
+  ]
+}

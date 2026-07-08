@@ -1,0 +1,37 @@
+{
+  "resourceType": "Procedure",
+  "id": "proc-418766005-0001",
+  "status": "completed",
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "418766005",
+        "display": "Cardiac stress test"
+      }
+    ],
+    "text": "Cardiac stress test"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0001-4000-8000-000000000001",
+    "display": "Maria Garcia"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0008-4000-8000-000000000008"
+  },
+  "performedPeriod": {
+    "start": "2026-03-01T09:15:00Z",
+    "end": "2026-03-01T09:35:00Z"
+  },
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "22298006",
+          "display": "Myocardial infarction risk assessment"
+        }
+      ]
+    }
+  ]
+}

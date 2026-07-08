@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deploy EASE eHealth contracts to Base Sepolia (or local Anvil)
+# Deploy EASE eHealth contracts to Ethereum Sepolia (or local Anvil)
 # Usage: ./deploy-contracts.sh [--local]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,9 +16,9 @@ if [[ "${1:-}" == "--local" ]]; then
   export OPS_ADDRESS="0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
   export TREASURY_ADDRESS="0x90F79bf6EB2c4f870365E785982E1f101E93b906"
 else
-  echo "Deploying to Base Sepolia..."
+  echo "Deploying to Ethereum Sepolia..."
   source "$ROOT_DIR/infra/env/.env" 2>/dev/null || { echo "Error: .env not found"; exit 1; }
-  RPC_URL="${BASE_SEPOLIA_RPC_URL}"
+  RPC_URL="${SEPOLIA_RPC_URL}"
 fi
 
 cd "$ROOT_DIR/contracts"

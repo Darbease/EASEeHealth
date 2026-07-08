@@ -1,0 +1,40 @@
+{
+  "resourceType": "Condition",
+  "id": "cond-22298006-0001",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed",
+        "display": "Confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "22298006",
+        "display": "Myocardial infarction"
+      }
+    ],
+    "text": "Myocardial infarction"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0001-4000-8000-000000000001",
+    "display": "Maria Garcia"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0001-4000-8000-000000000001"
+  },
+  "onsetDateTime": "2025-08-10"
+}

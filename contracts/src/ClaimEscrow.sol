@@ -6,6 +6,11 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/// @notice Minimal view into ClaimDecisionRegistry used to gate payouts.
+interface IClaimDecisionRegistry {
+    function isApproved(bytes32 claimId) external view returns (bool);
+}
+
 /// @title ClaimEscrow — ERC-20 settlement pool with payout scheduling
 /// @notice Manages fund pool, schedules payouts on approval, releases on confirmation
 contract ClaimEscrow is AccessControl, ReentrancyGuard {
@@ -33,14 +38,25 @@ contract ClaimEscrow is AccessControl, ReentrancyGuard {
     mapping(bytes32 => PayoutInstruction) private _payouts;
     uint256 public totalScheduled;
 
+    /// @notice When set (non-zero), releasePayout requires the claim to be APPROVED here.
+    address public claimDecisionRegistry;
+
     event PoolFunded(address indexed from, uint256 amount);
     event PayoutScheduled(bytes32 indexed claimId, address recipient, uint256 amount);
     event PayoutReleased(bytes32 indexed claimId, address recipient, uint256 amount);
     event PayoutCanceled(bytes32 indexed claimId, uint16 reasonCode);
+    event ClaimDecisionRegistrySet(address indexed registry);
 
     constructor(address admin, IERC20 _settlementToken) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         settlementToken = _settlementToken;
+    }
+
+    /// @notice Wire the decision registry that gates payouts. When non-zero,
+    ///         releasePayout requires the claim to be APPROVED (an attested verdict).
+    function setClaimDecisionRegistry(address registry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        claimDecisionRegistry = registry;
+        emit ClaimDecisionRegistrySet(registry);
     }
 
     /// @notice Fund the escrow pool. Caller must have approved this contract.
@@ -66,6 +82,14 @@ contract ClaimEscrow is AccessControl, ReentrancyGuard {
     function releasePayout(bytes32 claimId) external onlyRole(WORKFLOW_ROLE) nonReentrant {
         PayoutInstruction storage p = _payouts[claimId];
         require(p.status == PayoutStatus.SCHEDULED, "ClaimEscrow: not scheduled");
+
+        // Provable settlement gate: when a decision registry is wired, funds only
+        // move for a claim that registry marks APPROVED (i.e. an attested verdict).
+        address registry = claimDecisionRegistry;
+        require(
+            registry == address(0) || IClaimDecisionRegistry(registry).isApproved(claimId),
+            "ClaimEscrow: claim not approved"
+        );
 
         // Effects before interaction (CEI)
         p.status = PayoutStatus.RELEASED;

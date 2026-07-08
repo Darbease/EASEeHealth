@@ -1,13 +1,22 @@
-import express from "express"
+import express, { type RequestHandler } from "express"
 import { correlationMiddleware, logger, emitEvent } from "@proofpa/observability"
 import { z } from "zod"
 import { keccak256, encodePacked } from "viem"
 import { randomUUID } from "node:crypto"
+import { existsSync, readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { CLINICAL, loadSyntheaData } from "@proofpa/schemas"
+import { fhirRouter } from "./fhir.js"
 
 const app = express()
 app.use(express.json())
-app.use(correlationMiddleware)
+// correlationMiddleware is typed against the shared package's express copy — cast to this service's handler type.
+app.use(correlationMiddleware as unknown as RequestHandler)
+
+// FHIR R4 substrate (M1): /fhir/r4/* reads + POST /v1/prior-auth/fhir-submit.
+// The legacy /v1/ehr/* CSV endpoints below stay live — WF-001..009 depend on them.
+app.use(fhirRouter)
 
 const Bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/)
 
@@ -300,6 +309,73 @@ app.get("/v1/ehr/medications/pending-auth", (_req, res) => {
   }))
   logger.info({ correlation_id: _req.correlationId }, `EHR query: ${enriched.length} medications pending prior auth`)
   res.json({ pending_medications: enriched, count: enriched.length })
+})
+
+// ---------------------------------------------------------------------------
+// Native callback topology (Phase 2): fire the Confidential AI Attester with a
+// cre_callback so the clinical document goes provider → TEE and never touches
+// the DON. The verdict returns to decision-callback-service → wf-009 → on-chain.
+// ---------------------------------------------------------------------------
+const LETTERS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "data", "necessity-letters")
+const INFERENCE_BASE_URL = (process.env.INFERENCE_BASE_URL ?? "https://confidential-ai-dev-preview.cldev.cloud").replace(/\/$/, "")
+const INFERENCE_MODEL = process.env.INFERENCE_MODEL ?? "gemma4"
+const CALLBACK_SERVICE_URL = (process.env.CALLBACK_SERVICE_URL ?? "http://localhost:3006").replace(/\/$/, "")
+const DEMO_POLICY_HASH = "0x" + "a1".repeat(32)
+
+function loadNecessityLetter(procedureCode: string): string {
+  const p = join(LETTERS_DIR, `${procedureCode}.md`)
+  return existsSync(p) ? readFileSync(p, "utf8") : `Medical-necessity request for ${procedureCode}.`
+}
+
+app.post("/v1/prior-auth/submit-attested", (req, res) => {
+  const parsed = PriorAuthSubmitSchema.safeParse(req.body)
+  if (!parsed.success) { res.status(400).json({ error: "Invalid request", details: parsed.error.issues }); return }
+  const data = parsed.data
+  const claim_id = computeClaimId(
+    data.payer_id, data.provider_id_hash as `0x${string}`, data.encounter_ref_hash as `0x${string}`,
+    data.procedure_code, data.service_date,
+  )
+
+  if (!process.env.INFERENCE_API_KEY) {
+    res.status(503).json({ error: "INFERENCE_API_KEY not configured — attested submission unavailable", claim_id })
+    return
+  }
+
+  // Claim correlation rides on the cre_callback query string (the Attester echoes only its result).
+  const params = new URLSearchParams({
+    claim_id, policy_hash: DEMO_POLICY_HASH, consent_id: data.consent_id,
+    procedure_code: data.procedure_code, requested_amount: data.requested_amount,
+  })
+  const callbackUrl = `${CALLBACK_SERVICE_URL}/v1/callbacks/attester-result?${params.toString()}`
+  const letter = loadNecessityLetter(data.procedure_code)
+
+  const inferenceBody = {
+    model: INFERENCE_MODEL,
+    system_prompt: "You are a strict medical-necessity reviewer. Decide ONLY from the attached document and policy. Respond with ONLY a JSON object.",
+    prompt: `Requested procedure ${data.procedure_code}, amount ${data.requested_amount} (USD minor units). Is it medically necessary for the documented diagnosis and within policy? Return ONLY {"approved":true,"reason":"...","predicates":{"procedure_covered":true,"amount_within_cap":true,"necessity_established":true}}`,
+    resources: [{ filename: `${data.procedure_code}.md`, content_type: "text/markdown", content_base64: Buffer.from(letter, "utf8").toString("base64") }],
+    cre_callback: { url: callbackUrl },
+  }
+
+  // Fire-and-forget: the verdict returns asynchronously to the callback URL.
+  fetch(`${INFERENCE_BASE_URL}/v1/inference`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.INFERENCE_API_KEY}` },
+    body: JSON.stringify(inferenceBody),
+  })
+    .then((r) => logger.info({ claim_id, status: r.status }, "Attester inference fired (cre_callback set)"))
+    .catch((err) => logger.warn({ claim_id, err: String(err) }, "Attester inference dispatch failed"))
+
+  emitEvent({
+    correlation_id: req.correlationId, claim_id, stage: "attested_submission_dispatched", status: "success",
+    metadata: { procedure_code: data.procedure_code, callback_url: callbackUrl },
+  })
+  res.status(202).json({
+    status: "ACCEPTED_ATTESTED",
+    claim_id,
+    document: `${data.procedure_code}.md`,
+    note: "Document sent provider→TEE; verdict returns to decision-callback-service → wf-009. The DON never sees the document.",
+  })
 })
 
 app.get("/healthz", (_req, res) => res.json({ status: "ok" }))

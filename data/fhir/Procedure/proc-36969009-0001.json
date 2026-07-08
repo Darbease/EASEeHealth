@@ -1,0 +1,37 @@
+{
+  "resourceType": "Procedure",
+  "id": "proc-36969009-0001",
+  "status": "completed",
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "36969009",
+        "display": "Placement of coronary artery stent"
+      }
+    ],
+    "text": "Placement of coronary artery stent"
+  },
+  "subject": {
+    "reference": "Patient/c1d2e3f4-0001-4000-8000-000000000001",
+    "display": "Maria Garcia"
+  },
+  "encounter": {
+    "reference": "Encounter/f1a2b3c4-0009-4000-8000-000000000009"
+  },
+  "performedPeriod": {
+    "start": "2026-03-03T07:00:00Z",
+    "end": "2026-03-03T12:00:00Z"
+  },
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "22298006",
+          "display": "Myocardial infarction risk assessment"
+        }
+      ]
+    }
+  ]
+}
