@@ -1,82 +1,103 @@
 # X/Twitter thread — EASE eHealth: prior auth on Chainlink CRE
 
-*12 tweets, each ≤280 chars. Arc: the problem → how it works today → CRE in the middle of the API calls → smart-contract verification (patient on plan) → funds release. Figures cited in [`docs/REALITY_MAP.md`](../REALITY_MAP.md).*
+*14 tweets, each ≤280 chars. Arc: CRE could solve one of American healthcare's biggest problems — the dominoes falling (health-data-over-APIs law, finance moving to stablecoins/smart contracts) → the prior-auth problem and today's flow → how CRE fixes it. Figures cited in [`docs/REALITY_MAP.md`](../REALITY_MAP.md).*
 
 ---
 
 **1/**
-US doctors spend ~13 hours a week asking insurers for permission to treat their patients.
+Chainlink CRE could be used to solve one of the biggest problems in American healthcare.
 
-Prior authorization: 37% still happens by fax/phone/mail. ~$6 and 11 minutes per request. 7.7% denied — and 80.7% of appealed denials get overturned.
+Not a toy demo — the actual $265B/yr problem.
 
-We automated it end-to-end. 🧵
+But a few dominoes had to fall first. They're falling now. 🧵
 
 **2/**
-How it works today: the doctor's EHR sends a request → a clearinghouse translates it into a 1990s EDI format (X12 278) → the payer's system → back through the middleman again.
+Domino 1: the data.
 
-And every payer keeps its own private copy of plans, eligibility, and network directories.
+The 21st Century Cures Act made blocking health data illegal. Then CMS-0057-F went further: by Jan 2027, insurers MUST expose prior auth, eligibility, and patient data over standard FHIR APIs.
+
+Health data moving over APIs isn't a trend. It's signed law.
 
 **3/**
-That middleman layer is so concentrated that ~50% of US claims flow through ONE company.
+Domino 2: the money.
 
-In Feb 2024, a single missing MFA control there froze the nation's claims. $8.9B in emergency loans to keep clinics open.
+The GENIUS Act gave stablecoins a federal framework, and financial institutions are moving payment and settlement onto tokenized rails and smart contracts.
 
-A shared backbone — built as a single point of failure.
+Programmable money is becoming boring, regulated infrastructure.
 
 **4/**
-Our version: the shared facts move on-chain, and @chainlink CRE sits in the middle of the API calls instead of a clearinghouse.
+Domino 3: the middleman already failed.
 
-No translation layer. No owner. Every payer and provider reads and writes the same verifiable state.
+~50% of US medical claims flow through ONE clearinghouse. In Feb 2024, a single missing MFA control there froze the nation's claims — $8.9B in emergency loans to keep clinics alive.
+
+The industry is actively looking for what's next.
 
 **5/**
-The flow: a provider submits the prior-auth request as a FHIR ServiceRequest — the same shape CMS mandates payers support by 2027.
+So: health data legally must move over APIs. Money is moving to smart contracts. And the centralized middleman is a proven single point of failure.
 
-That signed HTTP call triggers a CRE workflow directly. No cron. No queue. No intermediary inbox.
+Sitting between APIs and smart contracts, with no owner in the middle, is exactly what CRE is.
+
+The use case: prior authorization.
 
 **6/**
+Prior auth is how insurers approve care before it happens — and it's brutal:
+
+• 37% still runs on fax/phone/mail
+• ~$6 + 11 minutes per request
+• ~13 hrs per physician per week
+• 7.7% denied, yet 80.7% of appealed denials get OVERTURNED
+
+95% of doctors say it delays care.
+
+**7/**
+How it works today:
+
+The doctor's EHR sends a request → a clearinghouse translates it into a 1990s EDI format (X12 278) → the payer's system → back through the middleman again. Days to weeks.
+
+And every payer keeps its own private copy of plans, eligibility, and directories.
+
+**8/**
+How we rebuilt it: the shared facts move on-chain, and @chainlink CRE sits in the middle of the API calls instead of a clearinghouse.
+
+Provider submits a FHIR ServiceRequest (the exact shape the 2027 mandate requires) → the signed HTTP call triggers a CRE workflow directly.
+
+**9/**
 First, CRE re-fetches the clinical record over confidential HTTP and cross-checks the submission against the source.
 
 Patient data stays encrypted end-to-end — DON nodes relay ciphertext.
 
 No PHI ever touches the chain. Only hashes, states, and payouts do.
 
-**7/**
-Then CRE checks the smart contracts — three reads against the shared registries:
+**10/**
+Then CRE checks the smart contracts — three reads against shared registries:
 
 • OrganizationRegistry: is this provider in-network for the plan?
 • CoverageRegistry: is this patient actually ON the plan, right now?
 • PolicyRegistry: is the procedure covered, under the cap?
 
-**8/**
-Those aren't our rules — they're the payer's.
+**11/**
+Those aren't our rules — they're the insurer's.
 
-Each plan's gates live on-chain, signed by the payer (EIP-712), with the full benefit design pinned by keccak256 hash. CRE verifies the served document against the signed commitment before trusting a byte of it.
+Each plan's gates live on-chain, signed by the payer (EIP-712), with the full benefit design pinned by hash. One judgment call remains — medical necessity — handled by a confidential AI in a TEE reading the physician's letter.
 
-**9/**
-If the rules pass, one judgment call remains: medical necessity.
-
-CRE sends the physician's letter to a confidential AI in a TEE over encrypted HTTP; it returns a signed verdict.
-
-(Deterministic fallback when the TEE is offline — stamped honestly as verdict_source: fallback.)
-
-**10/**
-The decision is written on-chain via DON-signed reports. If APPROVED, funds release from escrow to the provider in the same flow.
+**12/**
+The decision is written on-chain via DON-signed reports. If APPROVED, stablecoin funds release from escrow to the provider in the same flow.
 
 The escrow contract enforces the gate itself: releasePayout REVERTS unless the claim is APPROVED on-chain.
 
-A denied claim cannot be paid. Period.
+A denied claim cannot be paid.
 
-**11/**
-Measured results:
+**13/**
+Measured, end-to-end:
 
-Knee MRI, $850, in-network, patient on plan, covered → APPROVED → PAID in 328ms.
-Not covered / out-of-network / not on the plan → DENIED in ~140ms, each with a machine-readable reason.
+Knee MRI, $850, in-network, on plan, covered → APPROVED → PAID in 328ms.
+Not covered / out-of-network / not on plan → DENIED in ~140ms, each with a machine-readable reason.
 
 The regulatory ceiling for these decisions: 72 hours.
 
-**12/**
-The claim→remittance cycle that takes weeks today (837/835) collapses into the approval itself.
+**14/**
+The dominoes: data must move over APIs by 2027 (only ~47% of providers will be ready). Money is moving on-chain. The middleman failed.
 
-FHIR R4 + Da Vinci shapes. Foundry contracts, 96 tests. @chainlink CRE: HTTP triggers, confidential HTTP, EVM reads/writes with DON consensus.
+CRE connects all three: FHIR APIs in, smart-contract verification, stablecoin settlement out.
 
-Code: github.com/Darbease/EASEeHealth
+Code + evidence: github.com/Darbease/EASEeHealth
