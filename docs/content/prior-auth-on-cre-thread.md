@@ -1,6 +1,6 @@
 # X/Twitter thread — EASE eHealth: prior auth on Chainlink CRE
 
-*14 tweets, each ≤280 chars. Arc: CRE could solve one of American healthcare's biggest problems — the dominoes falling (health-data-over-APIs law, finance moving to stablecoins/smart contracts) → the prior-auth problem and today's flow → how CRE fixes it. Figures cited in [`docs/REALITY_MAP.md`](../REALITY_MAP.md).*
+*15 tweets, each ≤280 chars. Arc: CRE could solve one of American healthcare's biggest problems — the dominoes falling (health-data-over-APIs law, finance moving to stablecoins/smart contracts) → the two-questions thesis → the prior-auth problem and today's flow → how CRE fixes it. Figures cited in [`docs/REALITY_MAP.md`](../REALITY_MAP.md).*
 
 ---
 
@@ -40,6 +40,16 @@ Sitting between APIs and smart contracts, with no owner in the middle, is exactl
 The use case: prior authorization.
 
 **6/**
+Healthcare payments should be two questions:
+
+1. Does the patient medically require this care?
+2. Is the patient in the network, on the plan?
+
+If both are true, funds should release to cover the care. That's the whole transaction.
+
+Everything else is overhead.
+
+**7/**
 Prior auth is how insurers approve care before it happens — and it's brutal:
 
 • 37% still runs on fax/phone/mail
@@ -49,45 +59,45 @@ Prior auth is how insurers approve care before it happens — and it's brutal:
 
 95% of doctors say it delays care.
 
-**7/**
+**8/**
 How it works today:
 
 The doctor's EHR sends a request → a clearinghouse translates it into a 1990s EDI format (X12 278) → the payer's system → back through the middleman again. Days to weeks.
 
 And every payer keeps its own private copy of plans, eligibility, and directories.
 
-**8/**
+**9/**
 How we rebuilt it: the shared facts move on-chain, and @chainlink CRE sits in the middle of the API calls instead of a clearinghouse.
 
 Provider submits a FHIR ServiceRequest (the exact shape the 2027 mandate requires) → the signed HTTP call triggers a CRE workflow directly.
 
-**9/**
+**10/**
 First, CRE re-fetches the clinical record over confidential HTTP and cross-checks the submission against the source.
 
 Patient data stays encrypted end-to-end — DON nodes relay ciphertext.
 
 No PHI ever touches the chain. Only hashes, states, and payouts do.
 
-**10/**
+**11/**
 Then CRE checks the smart contracts — three reads against shared registries:
 
 • OrganizationRegistry: is this provider in-network for the plan?
 • CoverageRegistry: is this patient actually ON the plan, right now?
 • PolicyRegistry: is the procedure covered, under the cap?
 
-**11/**
+**12/**
 Those aren't our rules — they're the insurer's.
 
 Each plan's gates live on-chain, signed by the payer (EIP-712), with the full benefit design pinned by hash. One judgment call remains — medical necessity — handled by a confidential AI in a TEE reading the physician's letter.
 
-**12/**
+**13/**
 The decision is written on-chain via DON-signed reports. If APPROVED, stablecoin funds release from escrow to the provider in the same flow.
 
 The escrow contract enforces the gate itself: releasePayout REVERTS unless the claim is APPROVED on-chain.
 
 A denied claim cannot be paid.
 
-**13/**
+**14/**
 Measured, end-to-end:
 
 Knee MRI, $850, in-network, on plan, covered → APPROVED → PAID in 328ms.
@@ -95,7 +105,7 @@ Not covered / out-of-network / not on plan → DENIED in ~140ms, each with a mac
 
 The regulatory ceiling for these decisions: 72 hours.
 
-**14/**
+**15/**
 The dominoes: data must move over APIs by 2027 (only ~47% of providers will be ready). Money is moving on-chain. The middleman failed.
 
 CRE connects all three: FHIR APIs in, smart-contract verification, stablecoin settlement out.
